@@ -8,8 +8,8 @@ Workspaces, agent templates, and AI task provisioning live in a separate repo (i
 
 ### AWS Requirements
 - Active AWS account
-- AWS CLI configured (`~/.aws/config` / `~/.aws/credentials`, or `AWS_PROFILE`) — `task login` validates it
-- IAM permissions to create VPC, EKS, RDS, Secrets Manager, CloudWatch, and IAM resources in the target account
+- AWS CLI configured — either an SSO profile in `~/.aws/config` (`AWS_PROFILE=<profile>` in `.env`; `task login` opens the browser and authenticates automatically, like `az login` in the AKS version) or static credentials
+- Admin-level IAM permissions to create VPC, EKS, RDS, Secrets Manager, CloudWatch, and IAM resources in the target account (the deploying identity needs `iam:*` for role/OIDC-provider management — a PowerUser-style policy without IAM access will not work)
 
 ### Required Tools (install via Homebrew)
 ```bash
