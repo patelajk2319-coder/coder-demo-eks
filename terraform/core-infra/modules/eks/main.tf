@@ -1,15 +1,23 @@
 data "aws_caller_identity" "current" {}
 
 locals {
-  # EKS access entries need the underlying IAM role/user ARN, not the STS
+  # EKS access entries need the underlying IAM role ARN, not the STS
   # assumed-role session ARN (arn:aws:sts::<acct>:assumed-role/<role>/<session>)
   # that aws_caller_identity returns when the deployer is authenticated via an
-  # assumed role (e.g. AWS SSO) — EKS rejects the session-suffixed form.
-  caller_arn         = data.aws_caller_identity.current.arn
-  caller_is_assumed  = can(regex("^arn:aws:sts::[0-9]+:assumed-role/", local.caller_arn))
-  deployer_principal_arn = local.caller_is_assumed ? (
-    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${split("/", local.caller_arn)[1]}"
-  ) : local.caller_arn
+  # assumed role (e.g. AWS SSO). Reconstructing the ARN by string surgery isn't
+  # enough either — SSO roles live under a path (/aws-reserved/sso.amazonaws.com/...)
+  # that the assumed-role ARN never includes, so look the role up by name to get
+  # its real ARN (path included).
+  caller_arn        = data.aws_caller_identity.current.arn
+  caller_is_assumed = can(regex("^arn:aws:sts::[0-9]+:assumed-role/", local.caller_arn))
+  caller_role_name  = local.caller_is_assumed ? split("/", local.caller_arn)[1] : null
+
+  deployer_principal_arn = local.caller_is_assumed ? data.aws_iam_role.deployer[0].arn : local.caller_arn
+}
+
+data "aws_iam_role" "deployer" {
+  count = local.caller_is_assumed ? 1 : 0
+  name  = local.caller_role_name
 }
 
 # ── Cluster IAM role ───────────────────────────────────────────────────────────
