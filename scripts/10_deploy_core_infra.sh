@@ -35,8 +35,13 @@ terraform -chdir="${TF_DIR}" init -upgrade
 # that's created in this same run), and Terraform resolves that data source before
 # creating anything — so on a first run, it fails before the cluster exists. Bootstrap
 # the cluster on its own first, then run the full apply once it's there.
-section "Bootstrapping EKS cluster (required before the kubernetes/helm providers can initialise)..."
+section "Bootstrapping VPC and EKS cluster (required before the kubernetes/helm providers can initialise)..."
+# -target=module.vpc is required alongside module.eks: eks only pulls in the
+# subnet IDs it directly depends on, not the NAT gateway or route tables —
+# without those, nodes launch into subnets with no internet route and hang
+# forever trying to bootstrap (nodeadm can never reach the EC2/EKS APIs).
 terraform -chdir="${TF_DIR}" apply \
+  -target=module.vpc \
   -target=module.eks \
   -var="region=${AWS_REGION}" \
   -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
