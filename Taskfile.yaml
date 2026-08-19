@@ -1,0 +1,183 @@
+# =============================================================================
+# Taskfile for Coder on EKS
+#
+# Deploys the platform only: EKS, RDS PostgreSQL, Secrets Manager, CloudWatch,
+# and the Coder server itself. Run once per environment — re-run infra/coder
+# only for upgrades or infra changes, never per-workspace. Workspaces, agents,
+# and templates are out of scope here; see your workspaces/templates repo (if
+# you have one) for those.
+#
+# Usage:
+#   One-time deployment (or after an infra/Coder version bump):
+#     task login  - Validate AWS credentials
+#     task infra  - Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons
+#     task coder  - Deploy Coder to EKS
+#     task init   - Initialise Coder; also starts a persistent port-forward
+#
+#   Utility tasks:
+#     task status            - Check Coder pod status
+#     task pods              - List all pods with node placement
+#     task ports             - Show Coder service and internal NLB hostname
+#     task port-forward      - Ensure Coder is forwarded to localhost:8080
+#     task port-forward-stop - Stop the persistent port-forward
+#     task logs              - Stream Coder control plane logs
+#     task nodes        - List EKS nodes
+#     task info         - Display connection information and credentials
+#     task audit-logs   - Export AI governance audit logs to data/audit-logs.json
+#     task ai-logs      - Export AI Bridge interception logs to data/ai-logs.json
+#     task connection-logs - Export Coder connection logs
+#
+#   Upgrades:
+#     task upgrade-coder            - Upgrade Coder to the latest release
+#     task upgrade-coder V=2.34.6   - Upgrade Coder to a specific version
+#
+#   Secret rotation:
+#     task rotate-secret SECRET_NAME=anthropic-api-key SECRET_VALUE=sk-ant-... - Rotate a Secrets Manager secret and restart Coder
+#
+#   Cleanup:
+#     task clean        - Reset Coder to a clean state (keeps EKS + AWS managed services)
+#     task nuke         - Destroy ALL AWS infrastructure including EKS
+# =============================================================================
+
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  CODER_NS: coder
+
+tasks:
+
+  # ---------------------------------------------------------------------------
+  # AWS Authentication
+  # ---------------------------------------------------------------------------
+
+  login:
+    desc: Validate AWS credentials for the configured profile/region
+    cmds:
+      - bash scripts/00_aws_login.sh
+
+  # ---------------------------------------------------------------------------
+  # Main Deployment Tasks
+  # ---------------------------------------------------------------------------
+
+  infra:
+    desc: Deploy EKS cluster, RDS PostgreSQL, VPC, and cluster add-ons
+    cmds:
+      - bash scripts/10_deploy_core_infra.sh
+
+  coder:
+    desc: Deploy Coder to EKS via Terraform (Helm release)
+    cmds:
+      - bash scripts/20_deploy_coder.sh
+
+  init:
+    desc: Initialise Coder — create admin user and write credentials to coder-init.json
+    cmds:
+      - bash scripts/30_init_coder.sh
+
+  # ---------------------------------------------------------------------------
+  # Status and Kubernetes Operations
+  # ---------------------------------------------------------------------------
+
+  status:
+    desc: Check Coder pod status
+    cmds:
+      - kubectl get pods -n {{.CODER_NS}}
+
+  pods:
+    desc: List all Coder pods with node placement
+    cmds:
+      - kubectl get pods -n {{.CODER_NS}} -o wide
+
+  ports:
+    desc: Show Coder service and internal NLB hostname
+    cmds:
+      - kubectl get svc -n {{.CODER_NS}}
+
+  port-forward:
+    desc: Ensure Coder is port-forwarded to localhost:8080 (left running; task init also starts this)
+    cmds:
+      - bash scripts/tools/port_forward.sh
+
+  port-forward-stop:
+    desc: Stop the persistent Coder port-forward
+    cmds:
+      - bash scripts/tools/port_forward.sh stop
+
+  nodes:
+    desc: List EKS nodes
+    cmds:
+      - kubectl get nodes -o wide
+
+  logs:
+    desc: Stream Coder control plane logs
+    cmds:
+      - kubectl logs -n {{.CODER_NS}} -l app.kubernetes.io/name=coder --follow --tail=50
+
+  # ---------------------------------------------------------------------------
+  # Information Tasks
+  # ---------------------------------------------------------------------------
+
+  info:
+    desc: Display Coder access URL, admin credentials, and cluster state
+    cmds:
+      - bash scripts/tools/info.sh
+
+  audit-logs:
+    desc: Export Coder AI governance audit logs to data/audit-logs.json
+    aliases: [audit]
+    cmds:
+      - bash scripts/logs/audit_logs.sh
+
+  connection-logs:
+    desc: Export Coder connection logs to data folder
+    aliases: [connections, conn-logs]
+    cmds:
+      - bash scripts/logs/connection_logs.sh
+
+  ai-logs:
+    desc: Export Coder AI Bridge interception logs to data/ai-logs.json
+    aliases: [ai, ai-governance]
+    cmds:
+      - bash scripts/logs/ai_logs.sh
+
+  # ---------------------------------------------------------------------------
+  # Upgrades
+  # ---------------------------------------------------------------------------
+
+  upgrade-coder:
+    aliases: [update, upgrade]
+    desc: Upgrade Coder to the latest release, or a specific version (V=2.34.6)
+    cmds:
+      - bash scripts/tools/upgrade_coder.sh {{.V}}
+
+  # ---------------------------------------------------------------------------
+  # Secret Rotation
+  # ---------------------------------------------------------------------------
+
+  rotate-secret:
+    desc: Rotate a Secrets Manager secret and restart Coder to pick up the new value (SECRET_NAME=, SECRET_VALUE=)
+    cmds:
+      - aws secretsmanager put-secret-value --secret-id coder-demo-{{.SECRET_NAME}} --secret-string "{{.SECRET_VALUE}}"
+      - kubectl rollout restart deployment/coder -n {{.CODER_NS}}
+      - kubectl rollout status deployment/coder -n {{.CODER_NS}} --timeout=120s
+
+  # ---------------------------------------------------------------------------
+  # Cleanup Tasks
+  # ---------------------------------------------------------------------------
+
+  clean:
+    desc: Reset Coder to a clean state — removes Helm release, clears DB, keeps EKS and RDS running (run your workspaces repo's task clean first, if you have one)
+    cmds:
+      - bash scripts/tools/clean_coder.sh
+
+  nuke:
+    desc: Destroy ALL AWS infrastructure including EKS and RDS
+    cmds:
+      - bash scripts/tools/nuke.sh
+
+  help:
+    desc: Show all available tasks
+    cmds:
+      - task --list

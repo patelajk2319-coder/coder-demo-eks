@@ -1,0 +1,41 @@
+# Environment — contains credentials, never commit
+.env
+
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfstate.*.backup
+**/.terraform.lock.hcl
+**/terraform.tfvars
+
+# Helm chart dependencies
+helm-chart/**/charts/
+*.tgz
+
+# Coder credentials written by 30_init_coder.sh
+coder-init.json
+
+# Port-forward PID file written by scripts/lib/port_forward.sh
+.coder-port-forward.pid
+
+# Coder Premium license — never commit
+*.lic
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local tool settings (machine-specific, not project config)
+.claude/
+
+# Data output
+data/
+
+# Documentation (demo notes, not for source control)
+docs/

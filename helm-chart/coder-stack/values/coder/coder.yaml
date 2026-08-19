@@ -1,0 +1,21 @@
+# Coder Helm values — structural and static config only.
+# All env vars (CODER_ACCESS_URL, CODER_PG_CONNECTION_URL, etc.) are
+# injected by Terraform via yamlencode to avoid fragile positional set overrides.
+
+coder:
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+
+  replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
