@@ -312,6 +312,20 @@ resource "helm_release" "secrets_store_csi_driver" {
     value = "true"
   }
 
+  # Required for the AWS provider: the CSIDriver object needs projected
+  # service-account tokens for these audiences so pods' IRSA identity can be
+  # exchanged for AWS credentials. The provider-aws chart's bundled copy of
+  # this driver sets this by default; our standalone install needs it explicit.
+  set {
+    name  = "tokenRequests[0].audience"
+    value = "sts.amazonaws.com"
+  }
+
+  set {
+    name  = "tokenRequests[1].audience"
+    value = "pods.eks.amazonaws.com"
+  }
+
   wait    = true
   timeout = 300
 }
