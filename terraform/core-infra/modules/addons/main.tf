@@ -322,6 +322,15 @@ resource "helm_release" "secrets_store_csi_driver_provider_aws" {
   chart      = "secrets-store-csi-driver-provider-aws"
   namespace  = "kube-system"
 
+  # This chart bundles its own copy of secrets-store-csi-driver as a subchart
+  # (defaulting to fullnameOverride: secrets-store-csi-driver), which collides
+  # with the standalone driver release above. Disable the bundled copy since
+  # we already install the driver ourselves.
+  set {
+    name  = "secrets-store-csi-driver.install"
+    value = "false"
+  }
+
   wait    = true
   timeout = 300
 
