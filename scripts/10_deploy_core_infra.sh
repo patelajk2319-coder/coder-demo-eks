@@ -30,8 +30,19 @@ terraform -chdir="${TF_DIR}" init -upgrade
 # ── Terraform apply ────────────────────────────────────────────────────────────
 # Unlike the Azure Key Vault version of this stack, there's no deploy-machine-IP
 # allowlist dance here — Secrets Manager access is IAM-based (IRSA), not
-# IP-based, so a single apply is enough.
-section "Deploying VPC, EKS, RDS, Secrets Manager, and cluster add-ons..."
+# IP-based. There IS a different two-pass requirement though: the kubernetes/helm
+# providers read the EKS cluster via a data source (so they can talk to a cluster
+# that's created in this same run), and Terraform resolves that data source before
+# creating anything — so on a first run, it fails before the cluster exists. Bootstrap
+# the cluster on its own first, then run the full apply once it's there.
+section "Bootstrapping EKS cluster (required before the kubernetes/helm providers can initialise)..."
+terraform -chdir="${TF_DIR}" apply \
+  -target=module.eks \
+  -var="region=${AWS_REGION}" \
+  -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
+  -auto-approve
+
+section "Deploying VPC, RDS, Secrets Manager, and cluster add-ons..."
 terraform -chdir="${TF_DIR}" apply \
   -var="region=${AWS_REGION}" \
   -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
