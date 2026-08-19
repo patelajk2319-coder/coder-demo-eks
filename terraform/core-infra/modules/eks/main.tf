@@ -1,5 +1,17 @@
 data "aws_caller_identity" "current" {}
 
+locals {
+  # EKS access entries need the underlying IAM role/user ARN, not the STS
+  # assumed-role session ARN (arn:aws:sts::<acct>:assumed-role/<role>/<session>)
+  # that aws_caller_identity returns when the deployer is authenticated via an
+  # assumed role (e.g. AWS SSO) — EKS rejects the session-suffixed form.
+  caller_arn         = data.aws_caller_identity.current.arn
+  caller_is_assumed  = can(regex("^arn:aws:sts::[0-9]+:assumed-role/", local.caller_arn))
+  deployer_principal_arn = local.caller_is_assumed ? (
+    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${split("/", local.caller_arn)[1]}"
+  ) : local.caller_arn
+}
+
 # ── Cluster IAM role ───────────────────────────────────────────────────────────
 
 resource "aws_iam_role" "cluster" {
@@ -51,12 +63,12 @@ resource "aws_eks_cluster" "main" {
 # the equivalent of AKS's `az aks get-credentials --admin`.
 resource "aws_eks_access_entry" "deployer" {
   cluster_name  = aws_eks_cluster.main.name
-  principal_arn = data.aws_caller_identity.current.arn
+  principal_arn = local.deployer_principal_arn
 }
 
 resource "aws_eks_access_policy_association" "deployer_admin" {
   cluster_name  = aws_eks_cluster.main.name
-  principal_arn = data.aws_caller_identity.current.arn
+  principal_arn = local.deployer_principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
   access_scope {
