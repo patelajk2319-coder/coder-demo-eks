@@ -5,6 +5,10 @@
 resource "aws_secretsmanager_secret" "anthropic_api_key" {
   name = "${var.name_prefix}-anthropic-api-key"
   tags = var.tags
+
+  # Demo environment, torn down and redeployed often — a 30-day soft-delete
+  # window would block the secret name from being reused on the next deploy.
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "anthropic_api_key" {
@@ -15,6 +19,8 @@ resource "aws_secretsmanager_secret_version" "anthropic_api_key" {
 resource "aws_secretsmanager_secret" "postgres_admin_password" {
   name = "${var.name_prefix}-postgres-admin-password"
   tags = var.tags
+
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "postgres_admin_password" {
