@@ -8,27 +8,22 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
-output "rds_endpoint" {
-  description = "Connection endpoint (hostname) of the RDS PostgreSQL instance"
-  value       = module.rds.address
+output "database_subnet_ids" {
+  description = "IDs of the isolated RDS subnets — needed by terraform/addons"
+  value       = module.vpc.database_subnet_ids
 }
 
-output "rds_database_name" {
-  description = "Name of the Coder application database"
-  value       = module.rds.database_name
+output "cluster_security_group_id" {
+  description = "ID of the EKS cluster's shared security group — needed by terraform/addons for RDS ingress"
+  value       = module.eks.cluster_security_group_id
 }
 
-output "anthropic_secret_arn" {
-  description = "ARN of the Secrets Manager secret holding the Anthropic API key"
-  value       = module.secrets.anthropic_secret_arn
+output "oidc_provider_arn" {
+  description = "ARN of the IAM OIDC provider — needed by terraform/addons for IRSA role trust policies"
+  value       = module.eks.oidc_provider_arn
 }
 
-output "postgres_secret_arn" {
-  description = "ARN of the Secrets Manager secret holding the PostgreSQL admin password"
-  value       = module.secrets.postgres_secret_arn
-}
-
-output "coder_identity_role_arn" {
-  description = "IAM role ARN (IRSA) for the Coder service account — read access to Secrets Manager"
-  value       = module.secrets.coder_role_arn
+output "oidc_provider_url" {
+  description = "URL of the cluster's OIDC issuer — needed by terraform/addons for IRSA role trust policies"
+  value       = module.eks.oidc_provider_url
 }
