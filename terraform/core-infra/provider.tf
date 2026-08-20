@@ -27,9 +27,9 @@ provider "aws" {
   region = var.region
 }
 
-# The EKS cluster is created in this same apply, so kubeconfig can't be used yet
-# (no file exists to point at). Authenticate kubernetes/helm directly against the
-# cluster via a short-lived exec token instead — standard pattern for single-pass
+# The EKS cluster is created in this same apply, so there's no kubeconfig file
+# to point at yet. Authenticate kubernetes/helm directly via a token fetched
+# from aws_eks_cluster_auth instead — standard pattern for single-pass
 # cluster + in-cluster-addon Terraform runs.
 data "aws_eks_cluster" "this" {
   name = module.eks.cluster_name

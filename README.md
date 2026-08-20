@@ -16,6 +16,24 @@ Workspaces, agent templates, and AI task provisioning live in a separate repo (i
 brew install terraform awscli kubectl jq go-task coder
 ```
 
+## Configuration
+
+All configuration lives in `.env`, copied from `.env.example`. `.env` is gitignored —
+it holds real credentials and must never be committed. `.env.example` mirrors `.env`
+exactly (same variable names) and is the only one of the two safe to commit.
+
+`.env.example` has two kinds of variables, and each is labelled with a comment so it's
+clear which is which:
+
+- **You fill these in**: `AWS_REGION`, `AWS_PROFILE`, `CODER_ADMIN_PASSWORD`,
+  `TF_VAR_postgres_admin_password`, `ANTHROPIC_API_KEY` (a placeholder is fine if you
+  don't need AI Bridge features yet — see the comment above it), plus a few that
+  already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`,
+  `POSTGRES_ADMIN_USER`).
+- **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
+  `task coder`) and `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` /
+  `SECRETS_MANAGER_ARN` / `CODER_IDENTITY_ROLE_ARN` (written by `task infra`).
+
 ## Quick Start
 
 ### 1. Clone the Repository
@@ -29,11 +47,8 @@ cd coder-demo-eks
 cp .env.example .env
 ```
 
-Fill in the required values:
+Fill in the values described in [Configuration](#configuration) above — at minimum:
 ```env
-AWS_REGION=eu-west-1
-AWS_PROFILE=default
-
 CODER_ADMIN_PASSWORD=<your-secure-password>
 TF_VAR_postgres_admin_password=<your-secure-password>
 ANTHROPIC_API_KEY=<your-anthropic-key>
@@ -83,8 +98,13 @@ task nuke
 | `task pods` | List pods with node placement |
 | `task ports` | Show Coder service and internal NLB hostname |
 | `task port-forward` | Forward Coder to localhost:8080 for browser/CLI access |
+| `task port-forward-stop` | Stop the persistent port-forward |
 | `task nodes` | List EKS nodes |
 | `task logs` | Stream Coder control plane logs |
 | `task info` | Display connection info and credentials |
 | `task audit-logs` | Export AI governance audit logs |
 | `task ai-logs` | Export AI Bridge interception logs |
+| `task connection-logs` | Export Coder connection logs |
+| `task upgrade-coder` | Upgrade Coder to the latest (or a specific, `V=x.y.z`) version |
+| `task rotate-secret` | Rotate a Secrets Manager secret (`SECRET_NAME=`, `SECRET_VALUE=`) and restart Coder |
+| `task help` | List all available tasks |

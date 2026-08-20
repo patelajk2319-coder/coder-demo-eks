@@ -25,17 +25,10 @@ set -a; source "${ROOT_DIR}/.env"; set +a
 
 stop_coder_port_forward
 
-# ── Destroy Coder first — while the cluster (and its AWS Load Balancer
-# Controller) is still alive ────────────────────────────────────────────────
-# The Coder Service's internal NLB, its target group, and its security groups
-# are all created by the in-cluster AWS Load Balancer Controller — none of
-# that is Terraform-managed. Destroying this release first triggers a normal
-# `helm uninstall`, which deletes the Service, which the controller's own
-# finalizer reacts to by cleaning up the NLB/SG/target group properly via the
-# AWS API *before* the cluster goes away. Skipping this step (or destroying
-# core-infra first) leaves those resources orphaned, un-tracked by Terraform,
-# and blocking subnet/VPC deletion with DependencyViolation errors that only
-# manual AWS console/CLI cleanup can resolve.
+# Destroy Coder first, while the cluster's AWS Load Balancer Controller is
+# still alive: the Service's NLB, target group, and security groups are
+# created by that controller, not Terraform. Destroying core-infra first
+# orphans them (controller gone) and blocks VPC teardown on DependencyViolation.
 if [[ -n "${EKS_CLUSTER_NAME:-}" ]] && [[ -f "${CODER_TF_DIR}/terraform.tfstate" ]]; then
   section "Destroying Coder (lets the AWS Load Balancer Controller clean up the NLB first)..."
   POSTGRES_CONN_URL="postgresql://${POSTGRES_ADMIN_USER:-pgadmin}:${TF_VAR_postgres_admin_password:-}@${RDS_ENDPOINT:-}/${RDS_DATABASE:-}?sslmode=require"

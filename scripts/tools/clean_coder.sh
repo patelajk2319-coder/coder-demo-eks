@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Reset Coder back to a clean state, leaving EKS and RDS intact.
-# Destroys the Helm release and Terraform state for terraform/coder, drops
-# and recreates the Coder database, and clears the access URL from .env.
-# Database/infra concern only — does not touch workspace namespaces
-# (coder-ws-*). If you have a separate workspaces/templates repo, run its
-# clean task first to tear down any running workspaces via the Coder API.
-# After this, run: task coder && task init
+# Reset Coder to a clean state, leaving EKS and RDS intact: destroys the Helm
+# release and terraform/coder state, drops and recreates the database, clears
+# the access URL from .env. Doesn't touch workspace namespaces (coder-ws-*) —
+# run your workspaces repo's clean task first if you have one.
+# After this: task coder && task init
 
 set -euo pipefail
 

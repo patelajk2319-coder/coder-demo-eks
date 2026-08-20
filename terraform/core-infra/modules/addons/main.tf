@@ -33,11 +33,9 @@ resource "aws_iam_role" "alb_controller" {
   tags               = var.tags
 }
 
-# Official AWS Load Balancer Controller IAM policy, copied verbatim from
-# upstream (kubernetes-sigs/aws-load-balancer-controller docs/install/iam_policy.json)
-# rather than hand-transcribed — an earlier hand-transcription was missing the
-# AddTags-during-CreateTargetGroup/CreateLoadBalancer exception statement,
-# which caused the controller to fail tagging newly created target groups.
+# Copied verbatim from upstream (kubernetes-sigs/aws-load-balancer-controller
+# docs/install/iam_policy.json) rather than hand-transcribed, to avoid
+# missing a statement.
 resource "aws_iam_policy" "alb_controller" {
   name   = "${var.cluster_name}-alb-controller"
   policy = file("${path.module}/alb_controller_policy.json")

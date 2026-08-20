@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Authenticate with AWS and print the active identity/region.
-# Mirrors the AKS repo's `az login`: if AWS_PROFILE is SSO-backed, this opens a
-# browser to establish/refresh the SSO session (aws sso login handles the AWS
-# SDK's automatic credential refresh from there — no need to re-paste keys into
-# .env). If AWS_PROFILE isn't SSO-backed, this just validates whatever
-# credentials are already in the environment.
+# Authenticate with AWS. Mirrors the AKS repo's `az login`: if AWS_PROFILE is
+# SSO-backed, opens a browser to refresh the session (no need to re-paste keys
+# into .env). Otherwise just validates whatever credentials are present.
 
 set -euo pipefail
 

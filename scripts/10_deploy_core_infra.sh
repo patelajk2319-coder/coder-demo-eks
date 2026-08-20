@@ -27,19 +27,12 @@ set -a; source "${ROOT_DIR}/.env"; set +a
 section "Initialising Terraform (terraform/core-infra)..."
 terraform -chdir="${TF_DIR}" init -upgrade
 
-# ── Terraform apply ────────────────────────────────────────────────────────────
-# Unlike the Azure Key Vault version of this stack, there's no deploy-machine-IP
-# allowlist dance here — Secrets Manager access is IAM-based (IRSA), not
-# IP-based. There IS a different two-pass requirement though: the kubernetes/helm
-# providers read the EKS cluster via a data source (so they can talk to a cluster
-# that's created in this same run), and Terraform resolves that data source before
-# creating anything — so on a first run, it fails before the cluster exists. Bootstrap
-# the cluster on its own first, then run the full apply once it's there.
+# Two-pass apply: the kubernetes/helm providers read the cluster via a data
+# source, which Terraform resolves before creating anything — fails on a
+# fresh deploy unless the cluster exists first. module.vpc must be targeted
+# alongside module.eks (eks only pulls in subnet IDs, not the NAT gateway/route
+# tables — nodes with no internet route hang forever trying to bootstrap).
 section "Bootstrapping VPC and EKS cluster (required before the kubernetes/helm providers can initialise)..."
-# -target=module.vpc is required alongside module.eks: eks only pulls in the
-# subnet IDs it directly depends on, not the NAT gateway or route tables —
-# without those, nodes launch into subnets with no internet route and hang
-# forever trying to bootstrap (nodeadm can never reach the EC2/EKS APIs).
 terraform -chdir="${TF_DIR}" apply \
   -target=module.vpc \
   -target=module.eks \
