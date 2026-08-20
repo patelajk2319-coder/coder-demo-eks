@@ -16,11 +16,7 @@ source "${SCRIPT_DIR}/../lib/cluster_context.sh"
 
 INIT_FILE="${ROOT_DIR}/coder-init.json"
 
-echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  Coder on EKS — Connection Info${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
+section "Coder on EKS — Connection Info"
 
 if [[ -f "${INIT_FILE}" ]]; then
   ACCESS_URL=$(jq -r '.access_url'   "${INIT_FILE}")

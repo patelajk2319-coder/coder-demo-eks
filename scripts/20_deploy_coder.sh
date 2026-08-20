@@ -100,10 +100,6 @@ terraform -chdir="${TF_DIR}" apply \
 
 echo ""
 info "Coder is running on EKS"
-echo ""
-echo -e "\033[0;32m  ┌──────────────────────────────────────────────────────────────┐\033[0m"
-echo -e "\033[0;32m  │  Coder URL (VPC-internal):  ${CODER_URL}\033[0m"
-echo -e "\033[0;32m  └──────────────────────────────────────────────────────────────┘\033[0m"
-echo ""
+info "Coder URL (VPC-internal): ${CODER_URL}"
 info "Run: task init"
 info "For browser/CLI access from outside the VPC, run: task port-forward"
