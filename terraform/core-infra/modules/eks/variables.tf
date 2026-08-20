@@ -38,6 +38,11 @@ variable "node_max_count" {
   type        = number
 }
 
+variable "log_group_name" {
+  description = "Name of the pre-created CloudWatch log group for control-plane logs — see aws_eks_cluster.main's tags for why"
+  type        = string
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

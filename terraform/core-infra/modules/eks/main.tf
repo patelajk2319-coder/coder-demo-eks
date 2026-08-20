@@ -60,7 +60,15 @@ resource "aws_eks_cluster" "main" {
 
   enabled_cluster_log_types = ["api", "audit", "authenticator"]
 
-  tags = var.tags
+  # log-group tag has no functional effect on the cluster — it exists purely
+  # to create an implicit dependency on the pre-created CloudWatch log group,
+  # so this resource waits for it. Without it, EKS auto-creates its own copy
+  # (no retention set) the moment control-plane logging starts, and race
+  # ordering otherwise decides whether Terraform's own create call then fails
+  # with ResourceAlreadyExistsException.
+  tags = merge(var.tags, {
+    log-group = var.log_group_name
+  })
 
   depends_on = [aws_iam_role_policy_attachment.cluster_policy]
 }

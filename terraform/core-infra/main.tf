@@ -31,5 +31,7 @@ module "eks" {
   node_min_count     = var.node_min_count
   node_max_count     = var.node_max_count
 
+  log_group_name = module.logs.log_group_name
+
   tags = local.common_tags
 }
