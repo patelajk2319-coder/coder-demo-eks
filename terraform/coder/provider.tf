@@ -27,8 +27,8 @@ provider "helm" {
   }
 }
 
-# Reads terraform/core-infra's and terraform/addons' outputs directly — the
-# Terraform-native way to bridge deliberately separate states.
+# Reads terraform/core-infra's and terraform/cluster-services' outputs
+# directly — the Terraform-native way to bridge deliberately separate states.
 data "terraform_remote_state" "core" {
   backend = "local"
   config = {
@@ -36,9 +36,9 @@ data "terraform_remote_state" "core" {
   }
 }
 
-data "terraform_remote_state" "addons" {
+data "terraform_remote_state" "cluster_services" {
   backend = "local"
   config = {
-    path = "${path.module}/../addons/terraform.tfstate"
+    path = "${path.module}/../cluster-services/terraform.tfstate"
   }
 }

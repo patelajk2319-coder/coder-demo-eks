@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Deploy VPC, EKS cluster, and CloudWatch logs (terraform/core-infra), then RDS,
-# Secrets Manager, and cluster add-ons (terraform/addons) once the cluster
+# Secrets Manager, and cluster add-ons (terraform/cluster-services) once the cluster
 # exists. Two separate Terraform states: core-infra only needs the aws/tls
 # providers, so it never hits the "cluster doesn't exist yet" chicken-and-egg
-# problem that a combined kubernetes/helm provider config would. terraform/addons
+# problem that a combined kubernetes/helm provider config would. terraform/cluster-services
 # reads core-infra's outputs directly via terraform_remote_state, so this
 # script only needs to extract the handful of values other scripts use
 # directly. Writes those back to .env for subsequent steps.
@@ -13,7 +13,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CORE_TF_DIR="${ROOT_DIR}/terraform/core-infra"
-ADDONS_TF_DIR="${ROOT_DIR}/terraform/addons"
+CLUSTER_SERVICES_TF_DIR="${ROOT_DIR}/terraform/cluster-services"
 
 # shellcheck source=scripts/lib/colors.sh
 source "${SCRIPT_DIR}/lib/colors.sh"
@@ -46,16 +46,16 @@ info "EKS context '${EKS_CLUSTER_NAME}-admin' written to kubeconfig"
 section "Verifying cluster connectivity..."
 kubectl get nodes
 
-section "Initialising Terraform (terraform/addons)..."
-terraform -chdir="${ADDONS_TF_DIR}" init -upgrade
+section "Initialising Terraform (terraform/cluster-services)..."
+terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" init -upgrade
 
 section "Deploying RDS, Secrets Manager, and cluster add-ons..."
-terraform -chdir="${ADDONS_TF_DIR}" apply \
+terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" apply \
   -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
   -auto-approve
 
-RDS_ENDPOINT=$(terraform -chdir="${ADDONS_TF_DIR}" output -raw rds_endpoint)
-RDS_DATABASE=$(terraform -chdir="${ADDONS_TF_DIR}" output -raw rds_database_name)
+RDS_ENDPOINT=$(terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" output -raw rds_endpoint)
+RDS_DATABASE=$(terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" output -raw rds_database_name)
 
 section "Updating .env with infrastructure outputs..."
 

@@ -9,21 +9,21 @@ output "vpc_id" {
 }
 
 output "database_subnet_ids" {
-  description = "IDs of the isolated RDS subnets — needed by terraform/addons"
+  description = "IDs of the isolated RDS subnets — needed by terraform/cluster-services"
   value       = module.vpc.database_subnet_ids
 }
 
 output "cluster_security_group_id" {
-  description = "ID of the EKS cluster's shared security group — needed by terraform/addons for RDS ingress"
+  description = "ID of the EKS cluster's shared security group — needed by terraform/cluster-services for RDS ingress"
   value       = module.eks.cluster_security_group_id
 }
 
 output "oidc_provider_arn" {
-  description = "ARN of the IAM OIDC provider — needed by terraform/addons for IRSA role trust policies"
+  description = "ARN of the IAM OIDC provider — needed by terraform/cluster-services for IRSA role trust policies"
   value       = module.eks.oidc_provider_arn
 }
 
 output "oidc_provider_url" {
-  description = "URL of the cluster's OIDC issuer — needed by terraform/addons for IRSA role trust policies"
+  description = "URL of the cluster's OIDC issuer — needed by terraform/cluster-services for IRSA role trust policies"
   value       = module.eks.oidc_provider_url
 }
