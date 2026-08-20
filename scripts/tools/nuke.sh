@@ -25,9 +25,34 @@ set -a; source "${ROOT_DIR}/.env"; set +a
 
 stop_coder_port_forward
 
+# ── Destroy Coder first — while the cluster (and its AWS Load Balancer
+# Controller) is still alive ────────────────────────────────────────────────
+# The Coder Service's internal NLB, its target group, and its security groups
+# are all created by the in-cluster AWS Load Balancer Controller — none of
+# that is Terraform-managed. Destroying this release first triggers a normal
+# `helm uninstall`, which deletes the Service, which the controller's own
+# finalizer reacts to by cleaning up the NLB/SG/target group properly via the
+# AWS API *before* the cluster goes away. Skipping this step (or destroying
+# core-infra first) leaves those resources orphaned, un-tracked by Terraform,
+# and blocking subnet/VPC deletion with DependencyViolation errors that only
+# manual AWS console/CLI cleanup can resolve.
+if [[ -n "${EKS_CLUSTER_NAME:-}" ]] && [[ -f "${CODER_TF_DIR}/terraform.tfstate" ]]; then
+  section "Destroying Coder (lets the AWS Load Balancer Controller clean up the NLB first)..."
+  POSTGRES_CONN_URL="postgresql://${POSTGRES_ADMIN_USER:-pgadmin}:${TF_VAR_postgres_admin_password:-}@${RDS_ENDPOINT:-}/${RDS_DATABASE:-}?sslmode=require"
+  terraform -chdir="${CODER_TF_DIR}" destroy -auto-approve \
+    -var="kubeconfig_context=${EKS_CLUSTER_NAME}-admin" \
+    -var="region=${AWS_REGION}" \
+    -var="coder_access_url=${CODER_ACCESS_URL:-http://placeholder}" \
+    -var="coder_version=${CODER_VERSION:-2.33.6}" \
+    -var="postgres_connection_url=${POSTGRES_CONN_URL}" \
+    -var="anthropic_secret_arn=${SECRETS_MANAGER_ARN:-}" \
+    -var="coder_identity_role_arn=${CODER_IDENTITY_ROLE_ARN:-}" \
+    || warn "Destroying terraform/coder failed — the NLB and its security groups may not have been cleaned up; core-infra destroy below may fail on DependencyViolation as a result"
+fi
+
 # anthropic_api_key has no default — must be passed or destroy prompts
-# interactively. Deleting the EKS cluster takes Coder down with it, no separate
-# cleanup needed.
+# interactively. Deleting the EKS cluster takes the rest of the platform
+# down with it, no separate cleanup needed.
 section "Destroying AWS core infrastructure..."
 terraform -chdir="${TF_DIR}" destroy -auto-approve \
   -var="region=${AWS_REGION}" \
