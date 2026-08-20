@@ -39,3 +39,4 @@ data/
 
 # Documentation (demo notes, not for source control)
 docs/
+terraform/addons/.terraform.tfstate.lock.info
