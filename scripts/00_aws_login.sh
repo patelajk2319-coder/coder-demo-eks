@@ -16,14 +16,12 @@ if [[ -f "${ROOT_DIR}/.env" ]]; then
   set -a; source "${ROOT_DIR}/.env"; set +a
 fi
 
-: "${AWS_REGION:?AWS_REGION must be set in .env}"
-
 if [[ -n "${AWS_PROFILE:-}" ]] && aws configure get sso_session --profile "${AWS_PROFILE}" &>/dev/null; then
   section "Logging in to AWS SSO (profile: ${AWS_PROFILE})..."
   aws sso login --profile "${AWS_PROFILE}"
 fi
 
-section "Verifying AWS credentials (region: ${AWS_REGION})..."
+section "Verifying AWS credentials..."
 if ! aws sts get-caller-identity --output table; then
   error "AWS credentials are invalid or expired."
   error "Refresh them (aws sso login, or however your session token is issued) and re-run 'task login'."

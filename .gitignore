@@ -37,6 +37,6 @@ Thumbs.db
 # Data output
 data/
 
-# Documentation (demo notes, not for source control)
+# Documentation
 docs/
 terraform/addons/.terraform.tfstate.lock.info

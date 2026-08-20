@@ -8,6 +8,11 @@ output "rds_database_name" {
   value       = module.rds.database_name
 }
 
+output "rds_admin_username" {
+  description = "PostgreSQL administrator username — read by terraform/coder to build the connection URL"
+  value       = module.rds.admin_username
+}
+
 output "anthropic_secret_arn" {
   description = "ARN of the Secrets Manager secret holding the Anthropic API key"
   value       = module.secrets.anthropic_secret_arn

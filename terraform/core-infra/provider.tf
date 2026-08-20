@@ -16,5 +16,5 @@ terraform {
 # Auth is sourced from the standard AWS credential chain (~/.aws/config,
 # ~/.aws/credentials, or AWS_PROFILE) — set via .env and exported by the deploy script.
 provider "aws" {
-  region = var.region
+  region = local.aws_region
 }

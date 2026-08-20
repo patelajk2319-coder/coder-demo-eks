@@ -34,8 +34,7 @@ fi
 
 echo ""
 section "EKS Cluster: ${EKS_CLUSTER_NAME:-unknown}"
-echo "  Region: ${AWS_REGION:-unknown}"
-echo "  RDS:    ${RDS_ENDPOINT:-unknown}"
+echo "  RDS: ${RDS_ENDPOINT:-unknown}"
 
 echo ""
 section "Pods (coder namespace)"

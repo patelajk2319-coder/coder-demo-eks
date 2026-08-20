@@ -25,14 +25,20 @@ exactly (same variable names) and is the only one of the two safe to commit.
 `.env.example` has two kinds of variables, and each is labelled with a comment so it's
 clear which is which:
 
-- **You fill these in**: `AWS_REGION`, `AWS_PROFILE`, `CODER_ADMIN_PASSWORD`,
+- **You fill these in**: `AWS_PROFILE`, `CODER_ADMIN_PASSWORD`,
   `TF_VAR_postgres_admin_password`, `ANTHROPIC_API_KEY` (a placeholder is fine if you
-  don't need AI Bridge features yet — see the comment above it), plus a few that
-  already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`,
-  `POSTGRES_ADMIN_USER`).
+  don't need AI Bridge features yet — see the comment above it), plus a couple that
+  already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`).
 - **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
-  `task coder`) and `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` /
-  `SECRETS_MANAGER_ARN` / `CODER_IDENTITY_ROLE_ARN` (written by `task infra`).
+  `task coder`) and `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
+  `task infra`).
+
+There's no region variable — it's fixed to `eu-west-1` directly in Terraform (a
+single-region demo stack, not something meant to be reconfigured per-deploy). Your
+`AWS_PROFILE` needs to resolve to that region. Terraform state is also how the three
+`terraform/` directories (`core-infra`, `addons`, `coder`) talk to each other —
+each reads the previous one's outputs directly via `terraform_remote_state`, so
+there's no manual variable-threading between them.
 
 ## Quick Start
 

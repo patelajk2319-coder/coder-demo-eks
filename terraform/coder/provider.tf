@@ -17,12 +17,28 @@ terraform {
 # (aws eks update-kubeconfig --alias <cluster>-admin).
 provider "kubernetes" {
   config_path    = "~/.kube/config"
-  config_context = var.kubeconfig_context
+  config_context = "${data.terraform_remote_state.core.outputs.cluster_name}-admin"
 }
 
 provider "helm" {
   kubernetes {
     config_path    = "~/.kube/config"
-    config_context = var.kubeconfig_context
+    config_context = "${data.terraform_remote_state.core.outputs.cluster_name}-admin"
+  }
+}
+
+# Reads terraform/core-infra's and terraform/addons' outputs directly — the
+# Terraform-native way to bridge deliberately separate states.
+data "terraform_remote_state" "core" {
+  backend = "local"
+  config = {
+    path = "${path.module}/../core-infra/terraform.tfstate"
+  }
+}
+
+data "terraform_remote_state" "addons" {
+  backend = "local"
+  config = {
+    path = "${path.module}/../addons/terraform.tfstate"
   }
 }

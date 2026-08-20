@@ -1,5 +1,7 @@
 locals {
   name_prefix = "coder-demo"
+  # Fixed, not a variable — see terraform/core-infra/provider.tf.
+  aws_region = "eu-west-1"
 }
 
 # Installs the AWS Load Balancer Controller (internal NLB provisioning) and the
@@ -9,11 +11,11 @@ locals {
 module "addons" {
   source = "./modules/addons"
 
-  cluster_name      = var.cluster_name
-  oidc_provider_arn = var.oidc_provider_arn
-  oidc_provider_url = var.oidc_provider_url
-  vpc_id            = var.vpc_id
-  region            = var.region
+  cluster_name      = data.terraform_remote_state.core.outputs.cluster_name
+  oidc_provider_arn = data.terraform_remote_state.core.outputs.oidc_provider_arn
+  oidc_provider_url = data.terraform_remote_state.core.outputs.oidc_provider_url
+  vpc_id            = data.terraform_remote_state.core.outputs.vpc_id
+  region            = local.aws_region
   tags              = var.tags
 }
 
@@ -21,8 +23,8 @@ module "secrets" {
   source = "./modules/secrets"
 
   name_prefix       = local.name_prefix
-  oidc_provider_arn = var.oidc_provider_arn
-  oidc_provider_url = var.oidc_provider_url
+  oidc_provider_arn = data.terraform_remote_state.core.outputs.oidc_provider_arn
+  oidc_provider_url = data.terraform_remote_state.core.outputs.oidc_provider_url
 
   anthropic_api_key       = var.anthropic_api_key
   postgres_admin_password = var.postgres_admin_password
@@ -34,9 +36,9 @@ module "rds" {
   source = "./modules/rds"
 
   name                      = "${local.name_prefix}-postgres"
-  vpc_id                    = var.vpc_id
-  database_subnet_ids       = var.database_subnet_ids
-  allowed_security_group_id = var.cluster_security_group_id
+  vpc_id                    = data.terraform_remote_state.core.outputs.vpc_id
+  database_subnet_ids       = data.terraform_remote_state.core.outputs.database_subnet_ids
+  allowed_security_group_id = data.terraform_remote_state.core.outputs.cluster_security_group_id
 
   engine_version = var.postgres_engine_version
   instance_class = var.postgres_instance_class

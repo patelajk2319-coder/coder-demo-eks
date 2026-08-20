@@ -70,15 +70,15 @@ kubectl run pg-reset \
 kubectl wait pod/pg-reset --for=condition=Ready --timeout=60s --namespace=default &>/dev/null
 
 kubectl exec pg-reset --namespace=default -- \
-  psql -h "${PG_HOST}" -U "${POSTGRES_ADMIN_USER:-pgadmin}" -d postgres \
+  psql -h "${PG_HOST}" -U "pgadmin" -d postgres \
   -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='${DB_NAME}' AND pid <> pg_backend_pid();" &>/dev/null
 
 kubectl exec pg-reset --namespace=default -- \
-  psql -h "${PG_HOST}" -U "${POSTGRES_ADMIN_USER:-pgadmin}" -d postgres \
+  psql -h "${PG_HOST}" -U "pgadmin" -d postgres \
   -c "DROP DATABASE IF EXISTS ${DB_NAME};"
 
 kubectl exec pg-reset --namespace=default -- \
-  psql -h "${PG_HOST}" -U "${POSTGRES_ADMIN_USER:-pgadmin}" -d postgres \
+  psql -h "${PG_HOST}" -U "pgadmin" -d postgres \
   -c "CREATE DATABASE ${DB_NAME} WITH ENCODING='UTF8' LC_COLLATE='en_US.utf8' LC_CTYPE='en_US.utf8' TEMPLATE=template0;"
 
 

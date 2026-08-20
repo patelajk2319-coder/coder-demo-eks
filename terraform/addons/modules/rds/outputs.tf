@@ -7,3 +7,8 @@ output "database_name" {
   description = "Name of the Coder database"
   value       = aws_db_instance.main.db_name
 }
+
+output "admin_username" {
+  description = "PostgreSQL administrator username"
+  value       = aws_db_instance.main.username
+}
