@@ -42,6 +42,19 @@ AWS, no kubernetes/helm needed) is read directly by both `addons` (the AWS Load
 Balancer Controller and Secrets Store CSI driver — the only things that actually
 need kubernetes/helm) and `coder` (the Helm release).
 
+## Premium License (optional)
+
+If you have a Coder Premium license, drop the file at `licence.lic` in the repo
+root before running `task init` (or re-run `task init` any time afterwards —
+it's idempotent). `licence.lic` is gitignored (`*.lic`) and must never be
+committed; if it's absent, `task init` just skips this step and Coder runs on
+the open-source feature set as normal.
+
+Check what's currently applied with:
+```bash
+coder licenses list
+```
+
 ## Quick Start
 
 ### 1. Clone the Repository
@@ -67,7 +80,7 @@ ANTHROPIC_API_KEY=<your-anthropic-key>
 task login  # Validate AWS credentials
 task infra  # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
 task coder  # Coder Helm release
-task init   # Create admin user, write credentials to coder-init.json
+task init   # Create admin user, write credentials, apply licence.lic if present
 ```
 
 ### 4. Access Coder
@@ -99,7 +112,7 @@ task nuke
 | `task login` | Validate AWS credentials |
 | `task infra` | Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons |
 | `task coder` | Deploy Coder Helm release to EKS |
-| `task init` | Create Coder admin user and write credentials |
+| `task init` | Create Coder admin user, write credentials, apply `licence.lic` if present |
 | `task clean` | Reset Coder to clean state (keeps EKS + RDS) |
 | `task nuke` | Destroy all AWS infrastructure |
 | `task status` | Check Coder pod status |
