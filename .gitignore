@@ -8,6 +8,7 @@
 **/*.tfstate.*.backup
 **/.terraform.lock.hcl
 **/terraform.tfvars
+**/.terraform.tfstate.lock.info
 
 # Helm chart dependencies
 helm-chart/**/charts/
@@ -39,4 +40,3 @@ data/
 
 # Documentation
 docs/
-terraform/addons/.terraform.tfstate.lock.info
