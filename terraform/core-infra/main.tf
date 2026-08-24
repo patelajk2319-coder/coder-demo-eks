@@ -36,12 +36,6 @@ module "eks" {
   tags = local.common_tags
 }
 
-# RDS and Secrets Manager are pure AWS resources — no kubernetes/helm
-# providers needed, just values from module.vpc/module.eks. They live here
-# rather than in terraform/addons (which does need kubernetes/helm, for the
-# ALB controller and Secrets Store CSI driver) so that terraform/coder only
-# has one other state to read via terraform_remote_state, not two.
-
 module "secrets" {
   source = "./modules/secrets"
 

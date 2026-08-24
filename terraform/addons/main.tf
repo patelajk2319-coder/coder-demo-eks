@@ -6,10 +6,8 @@ locals {
 # Installs the AWS Load Balancer Controller (internal NLB provisioning) and the
 # Secrets Store CSI Driver + AWS provider (Secrets Manager mounts) — both are
 # built into AKS's cloud-provider integration but need to be installed explicitly
-# on EKS. Everything else that used to live alongside this (RDS, Secrets
-# Manager) is pure AWS and needs no kubernetes/helm provider, so it lives in
-# terraform/core-infra instead — this directory holds only what genuinely
-# requires the cluster to already exist and talk to it via kubernetes/helm.
+# on EKS. 
+
 module "addons" {
   source = "./modules/addons"
 
