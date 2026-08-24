@@ -36,6 +36,7 @@ terraform -chdir="${CORE_TF_DIR}" apply -auto-approve
 
 EKS_CLUSTER_NAME=$(terraform -chdir="${CORE_TF_DIR}" output -raw cluster_name)
 
+# Set the Kubernetes Cluster Context so we can run kubectl commands, and apply Helm Chart
 section "Writing kubeconfig..."
 aws eks update-kubeconfig \
   --name "${EKS_CLUSTER_NAME}" \
@@ -44,6 +45,10 @@ aws eks update-kubeconfig \
 info "EKS context '${EKS_CLUSTER_NAME}-admin' written to kubeconfig"
 
 section "Verifying cluster connectivity..."
+if ! kubectl wait --for=condition=Ready node --all --timeout=120s; then
+  error "Nodes did not reach Ready — check 'kubectl get nodes' before retrying"
+  exit 1
+fi
 kubectl get nodes
 
 section "Initialising Terraform (terraform/cluster-services)..."
