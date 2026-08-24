@@ -155,3 +155,75 @@ resource "helm_release" "secrets_store_csi_driver_provider_aws" {
 
   depends_on = [helm_release.secrets_store_csi_driver]
 }
+
+# ── EBS CSI Driver ──────────────────────────────────────────────────────────────
+# Provides dynamic PersistentVolume provisioning for workspace home directories —
+# not built into EKS. Installed as an official EKS addon (not Helm) since AWS
+# ships and versions it directly through the EKS API, same as the vpc-cni/
+# coredns/kube-proxy addons EKS already manages for the cluster itself.
+
+data "aws_iam_policy_document" "ebs_csi_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [var.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.oidc_provider_url}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.oidc_provider_url}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi" {
+  name               = "${var.cluster_name}-ebs-csi"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume.json
+  tags               = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name             = var.cluster_name
+  addon_name               = "aws-ebs-csi-driver"
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+  tags                     = var.tags
+
+  depends_on = [aws_iam_role_policy_attachment.ebs_csi]
+}
+
+# gp3 over the cluster's pre-existing gp2 default — cheaper and higher baseline
+# IOPS/throughput at the same size, and the modern EBS CSI recommendation.
+resource "kubernetes_storage_class" "gp3" {
+  metadata {
+    name = "gp3"
+    annotations = {
+      "storageclass.kubernetes.io/is-default-class" = "true"
+    }
+  }
+
+  storage_provisioner    = "ebs.csi.aws.com"
+  reclaim_policy         = "Delete"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  allow_volume_expansion = true
+
+  parameters = {
+    type = "gp3"
+  }
+
+  depends_on = [aws_eks_addon.ebs_csi]
+}
