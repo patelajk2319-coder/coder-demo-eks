@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# Deploy VPC, EKS cluster, and CloudWatch logs (terraform/core-infra), then RDS,
-# Secrets Manager, and cluster add-ons (terraform/cluster-services) once the cluster
-# exists. Two separate Terraform states: core-infra only needs the aws/tls
-# providers, so it never hits the "cluster doesn't exist yet" chicken-and-egg
-# problem that a combined kubernetes/helm provider config would. terraform/cluster-services
-# reads core-infra's outputs directly via terraform_remote_state, so this
-# script only needs to extract the handful of values other scripts use
-# directly. Writes those back to .env for subsequent steps.
+# Deploy VPC, EKS cluster, CloudWatch logs, RDS, and Secrets Manager
+# (terraform/core-infra — pure AWS, no kubernetes/helm needed), then the AWS
+# Load Balancer Controller and Secrets Store CSI driver (terraform/addons —
+# needs the cluster to exist first) once the cluster is ready. Two separate
+# Terraform states so core-infra never hits the "cluster doesn't exist yet"
+# chicken-and-egg problem a combined kubernetes/helm provider config would.
+# terraform/addons reads core-infra's outputs directly via
+# terraform_remote_state, so this script only needs to extract the handful
+# of values other scripts use directly. Writes those back to .env.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CORE_TF_DIR="${ROOT_DIR}/terraform/core-infra"
-CLUSTER_SERVICES_TF_DIR="${ROOT_DIR}/terraform/cluster-services"
+ADDONS_TF_DIR="${ROOT_DIR}/terraform/addons"
 
 # shellcheck source=scripts/lib/colors.sh
 source "${SCRIPT_DIR}/lib/colors.sh"
@@ -31,12 +32,16 @@ set -a; source "${ROOT_DIR}/.env"; set +a
 section "Initialising Terraform (terraform/core-infra)..."
 terraform -chdir="${CORE_TF_DIR}" init -upgrade
 
-section "Deploying VPC and EKS cluster..."
-terraform -chdir="${CORE_TF_DIR}" apply -auto-approve
+section "Deploying VPC, EKS, RDS, and Secrets Manager..."
+terraform -chdir="${CORE_TF_DIR}" apply \
+  -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
+  -auto-approve
 
 EKS_CLUSTER_NAME=$(terraform -chdir="${CORE_TF_DIR}" output -raw cluster_name)
+RDS_ENDPOINT=$(terraform -chdir="${CORE_TF_DIR}" output -raw rds_endpoint)
+RDS_DATABASE=$(terraform -chdir="${CORE_TF_DIR}" output -raw rds_database_name)
 
-# Set the Kubernetes Cluster Context so we can run kubectl commands, and apply Helm Chart
+# Set the Kubernetes cluster context so we can run kubectl commands and apply Helm charts.
 section "Writing kubeconfig..."
 aws eks update-kubeconfig \
   --name "${EKS_CLUSTER_NAME}" \
@@ -51,16 +56,11 @@ if ! kubectl wait --for=condition=Ready node --all --timeout=120s; then
 fi
 kubectl get nodes
 
-section "Initialising Terraform (terraform/cluster-services)..."
-terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" init -upgrade
+section "Initialising Terraform (terraform/addons)..."
+terraform -chdir="${ADDONS_TF_DIR}" init -upgrade
 
-section "Deploying RDS, Secrets Manager, and cluster add-ons..."
-terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" apply \
-  -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
-  -auto-approve
-
-RDS_ENDPOINT=$(terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" output -raw rds_endpoint)
-RDS_DATABASE=$(terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" output -raw rds_database_name)
+section "Deploying cluster add-ons (AWS Load Balancer Controller, Secrets Store CSI driver)..."
+terraform -chdir="${ADDONS_TF_DIR}" apply -auto-approve
 
 section "Updating .env with infrastructure outputs..."
 

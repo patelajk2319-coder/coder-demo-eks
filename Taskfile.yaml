@@ -96,6 +96,7 @@ tasks:
       - kubectl get svc -n {{.CODER_NS}}
 
   port-forward:
+    aliases: [fwd]
     desc: Ensure Coder is port-forwarded to localhost:8080 (left running; task init also starts this)
     cmds:
       - bash scripts/tools/port_forward.sh

@@ -27,18 +27,13 @@ provider "helm" {
   }
 }
 
-# Reads terraform/core-infra's and terraform/cluster-services' outputs
-# directly — the Terraform-native way to bridge deliberately separate states.
+# Reads terraform/core-infra's outputs directly — the Terraform-native way to
+# bridge deliberately separate states. Nothing here is read from
+# terraform/addons (the ALB controller/CSI driver just need to be installed,
+# not read from — no data dependency, only an ordering one).
 data "terraform_remote_state" "core" {
   backend = "local"
   config = {
     path = "${path.module}/../core-infra/terraform.tfstate"
-  }
-}
-
-data "terraform_remote_state" "cluster_services" {
-  backend = "local"
-  config = {
-    path = "${path.module}/../cluster-services/terraform.tfstate"
   }
 }

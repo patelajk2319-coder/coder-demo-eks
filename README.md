@@ -36,9 +36,11 @@ clear which is which:
 There's no region variable — it's fixed to `eu-west-1` directly in Terraform (a
 single-region demo stack, not something meant to be reconfigured per-deploy). Your
 `AWS_PROFILE` needs to resolve to that region. Terraform state is also how the three
-`terraform/` directories (`core-infra`, `cluster-services`, `coder`) talk to each other —
-each reads the previous one's outputs directly via `terraform_remote_state`, so
-there's no manual variable-threading between them.
+`terraform/` directories talk to each other, via `terraform_remote_state` instead of
+scripts threading `-var` flags: `core-infra` (VPC, EKS, RDS, Secrets Manager — pure
+AWS, no kubernetes/helm needed) is read directly by both `addons` (the AWS Load
+Balancer Controller and Secrets Store CSI driver — the only things that actually
+need kubernetes/helm) and `coder` (the Helm release).
 
 ## Quick Start
 

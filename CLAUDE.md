@@ -25,7 +25,7 @@ US English throughout all documentation, comments, and output strings.
 - All sensitive outputs marked `sensitive = true`
 - IAM roles follow least privilege — scope policies to specific resource ARNs, not `*`, wherever the AWS API allows it
 - Prefer Terraform over scripts/CLI: build logic (connection strings, derived values) in HCL, not bash string interpolation
-- Bridge the three separate `terraform/` states (`core-infra`, `cluster-services`, `coder`) with `terraform_remote_state`, not scripts extracting `terraform output` into `-var` flags
+- Bridge the three separate `terraform/` states (`core-infra`, `addons`, `coder`) with `terraform_remote_state`, not scripts extracting `terraform output` into `-var` flags
 - No variables for values that are never actually going to vary (e.g. region is a hardcoded literal, not a variable, in a single-region demo stack) — IaC should be explicit, not configurable by default
 
 ## Helm

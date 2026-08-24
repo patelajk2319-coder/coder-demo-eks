@@ -4,7 +4,7 @@ locals {
   # Fixed, not a variable — see terraform/core-infra/provider.tf.
   aws_region = "eu-west-1"
 
-  postgres_connection_url = "postgresql://${data.terraform_remote_state.cluster_services.outputs.rds_admin_username}:${var.postgres_admin_password}@${data.terraform_remote_state.cluster_services.outputs.rds_endpoint}/${data.terraform_remote_state.cluster_services.outputs.rds_database_name}?sslmode=require"
+  postgres_connection_url = "postgresql://${data.terraform_remote_state.core.outputs.rds_admin_username}:${var.postgres_admin_password}@${data.terraform_remote_state.core.outputs.rds_endpoint}/${data.terraform_remote_state.core.outputs.rds_database_name}?sslmode=require"
 }
 
 # ── Namespace ──────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ resource "kubernetes_annotations" "coder_sa" {
     namespace = local.coder_namespace
   }
   annotations = {
-    "eks.amazonaws.com/role-arn" = data.terraform_remote_state.cluster_services.outputs.coder_identity_role_arn
+    "eks.amazonaws.com/role-arn" = data.terraform_remote_state.core.outputs.coder_identity_role_arn
   }
 
   depends_on = [helm_release.coder]
@@ -94,7 +94,7 @@ resource "kubernetes_manifest" "secret_provider_class" {
       provider = "aws"
       parameters = {
         region  = local.aws_region
-        objects = "- objectName: \"${data.terraform_remote_state.cluster_services.outputs.anthropic_secret_arn}\"\n  objectType: \"secretsmanager\"\n"
+        objects = "- objectName: \"${data.terraform_remote_state.core.outputs.anthropic_secret_arn}\"\n  objectType: \"secretsmanager\"\n"
       }
       # Sync to a Kubernetes Secret so Helm can reference it via secretEnvs.
       secretObjects = [
@@ -103,7 +103,7 @@ resource "kubernetes_manifest" "secret_provider_class" {
           type       = "Opaque"
           data = [
             {
-              objectName = data.terraform_remote_state.cluster_services.outputs.anthropic_secret_arn
+              objectName = data.terraform_remote_state.core.outputs.anthropic_secret_arn
               key        = "CODER_AIBRIDGE_ANTHROPIC_KEY"
             },
           ]
@@ -130,7 +130,7 @@ resource "helm_release" "coder" {
       coder = {
         serviceAccount = {
           annotations = {
-            "eks.amazonaws.com/role-arn" = data.terraform_remote_state.cluster_services.outputs.coder_identity_role_arn
+            "eks.amazonaws.com/role-arn" = data.terraform_remote_state.core.outputs.coder_identity_role_arn
           }
         }
         volumes = [

@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORE_TF_DIR="${ROOT_DIR}/terraform/core-infra"
-CLUSTER_SERVICES_TF_DIR="${ROOT_DIR}/terraform/cluster-services"
+ADDONS_TF_DIR="${ROOT_DIR}/terraform/addons"
 CODER_TF_DIR="${ROOT_DIR}/terraform/coder"
 
 # shellcheck source=scripts/lib/colors.sh
@@ -34,28 +34,28 @@ if [[ -f "${CODER_TF_DIR}/terraform.tfstate" ]]; then
   section "Destroying Coder (lets the AWS Load Balancer Controller clean up the NLB first)..."
   terraform -chdir="${CODER_TF_DIR}" destroy -auto-approve \
     -var="coder_access_url=${CODER_ACCESS_URL:-http://placeholder}" \
-    || warn "Destroying terraform/coder failed — the NLB and its security groups may not have been cleaned up; cluster-services destroy below may fail on DependencyViolation as a result"
+    || warn "Destroying terraform/coder failed — the NLB and its security groups may not have been cleaned up; addons destroy below may fail on DependencyViolation as a result"
 fi
 
-# Destroy add-ons (ALB controller, Secrets Store CSI driver, RDS, Secrets
-# Manager) next, while the cluster still exists — the kubernetes/helm
-# providers here are configured against it.
-if [[ -f "${CLUSTER_SERVICES_TF_DIR}/terraform.tfstate" ]]; then
-  section "Destroying RDS, Secrets Manager, and cluster add-ons..."
-  terraform -chdir="${CLUSTER_SERVICES_TF_DIR}" destroy -auto-approve \
-    -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
-    || warn "Destroying terraform/cluster-services failed — some resources may require manual cleanup in the AWS console"
+# Destroy add-ons (ALB controller, Secrets Store CSI driver) next, while the
+# cluster still exists — the kubernetes/helm providers here are configured
+# against it.
+if [[ -f "${ADDONS_TF_DIR}/terraform.tfstate" ]]; then
+  section "Destroying cluster add-ons..."
+  terraform -chdir="${ADDONS_TF_DIR}" destroy -auto-approve \
+    || warn "Destroying terraform/addons failed — some resources may require manual cleanup in the AWS console"
 fi
 
-section "Destroying VPC and EKS cluster..."
+section "Destroying VPC, EKS, RDS, and Secrets Manager..."
 terraform -chdir="${CORE_TF_DIR}" destroy -auto-approve \
+  -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
   || warn "Terraform destroy failed — some resources may require manual cleanup in the AWS console"
 
-# terraform/coder and terraform/cluster-services state now refer to resources that no
+# terraform/coder and terraform/addons state now refer to resources that no
 # longer exist — clear them.
-section "Clearing local terraform/coder and terraform/cluster-services state..."
+section "Clearing local terraform/coder and terraform/addons state..."
 rm -f "${CODER_TF_DIR}"/terraform.tfstate "${CODER_TF_DIR}"/terraform.tfstate.backup
-rm -f "${CLUSTER_SERVICES_TF_DIR}"/terraform.tfstate "${CLUSTER_SERVICES_TF_DIR}"/terraform.tfstate.backup
+rm -f "${ADDONS_TF_DIR}"/terraform.tfstate "${ADDONS_TF_DIR}"/terraform.tfstate.backup
 
 rm -f "${ROOT_DIR}/coder-init.json"
 info "All AWS resources destroyed"

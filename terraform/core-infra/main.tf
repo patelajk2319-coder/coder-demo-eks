@@ -35,3 +35,39 @@ module "eks" {
 
   tags = local.common_tags
 }
+
+# RDS and Secrets Manager are pure AWS resources — no kubernetes/helm
+# providers needed, just values from module.vpc/module.eks. They live here
+# rather than in terraform/addons (which does need kubernetes/helm, for the
+# ALB controller and Secrets Store CSI driver) so that terraform/coder only
+# has one other state to read via terraform_remote_state, not two.
+
+module "secrets" {
+  source = "./modules/secrets"
+
+  name_prefix       = local.name_prefix
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider_url = module.eks.oidc_provider_url
+
+  anthropic_api_key       = var.anthropic_api_key
+  postgres_admin_password = var.postgres_admin_password
+
+  tags = local.common_tags
+}
+
+module "rds" {
+  source = "./modules/rds"
+
+  name                      = "${local.name_prefix}-postgres"
+  vpc_id                    = module.vpc.vpc_id
+  database_subnet_ids       = module.vpc.database_subnet_ids
+  allowed_security_group_id = module.eks.cluster_security_group_id
+
+  engine_version = var.postgres_engine_version
+  instance_class = var.postgres_instance_class
+  storage_gb     = var.postgres_storage_gb
+  admin_username = var.postgres_admin_username
+  admin_password = var.postgres_admin_password
+
+  tags = local.common_tags
+}
