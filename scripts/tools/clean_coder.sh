@@ -25,6 +25,7 @@ set -a; source "${ROOT_DIR}/.env"; set +a
 
 : "${EKS_CLUSTER_NAME:?EKS_CLUSTER_NAME must be set in .env — run task infra first}"
 : "${RDS_ENDPOINT:?RDS_ENDPOINT must be set in .env — run task infra first}"
+: "${RDS_ADMIN_USERNAME:?RDS_ADMIN_USERNAME must be set in .env — run task infra first}"
 : "${TF_VAR_postgres_admin_password:?TF_VAR_postgres_admin_password must be set in .env}"
 
 # shellcheck source=scripts/lib/cluster_context.sh
@@ -70,15 +71,15 @@ kubectl run pg-reset \
 kubectl wait pod/pg-reset --for=condition=Ready --timeout=60s --namespace=default &>/dev/null
 
 kubectl exec pg-reset --namespace=default -- \
-  psql -h "${PG_HOST}" -U "pgadmin" -d postgres \
+  psql -h "${PG_HOST}" -U "${RDS_ADMIN_USERNAME}" -d postgres \
   -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='${DB_NAME}' AND pid <> pg_backend_pid();" &>/dev/null
 
 kubectl exec pg-reset --namespace=default -- \
-  psql -h "${PG_HOST}" -U "pgadmin" -d postgres \
+  psql -h "${PG_HOST}" -U "${RDS_ADMIN_USERNAME}" -d postgres \
   -c "DROP DATABASE IF EXISTS ${DB_NAME};"
 
 kubectl exec pg-reset --namespace=default -- \
-  psql -h "${PG_HOST}" -U "pgadmin" -d postgres \
+  psql -h "${PG_HOST}" -U "${RDS_ADMIN_USERNAME}" -d postgres \
   -c "CREATE DATABASE ${DB_NAME} WITH ENCODING='UTF8' LC_COLLATE='en_US.utf8' LC_CTYPE='en_US.utf8' TEMPLATE=template0;"
 
 

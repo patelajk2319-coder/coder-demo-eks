@@ -40,6 +40,7 @@ terraform -chdir="${CORE_TF_DIR}" apply \
 EKS_CLUSTER_NAME=$(terraform -chdir="${CORE_TF_DIR}" output -raw cluster_name)
 RDS_ENDPOINT=$(terraform -chdir="${CORE_TF_DIR}" output -raw rds_endpoint)
 RDS_DATABASE=$(terraform -chdir="${CORE_TF_DIR}" output -raw rds_database_name)
+RDS_ADMIN_USERNAME=$(terraform -chdir="${CORE_TF_DIR}" output -raw rds_admin_username)
 
 # Set the Kubernetes cluster context so we can run kubectl commands and apply Helm charts.
 section "Writing kubeconfig..."
@@ -73,9 +74,10 @@ update_env() {
   fi
 }
 
-update_env "EKS_CLUSTER_NAME" "${EKS_CLUSTER_NAME}"
-update_env "RDS_ENDPOINT"     "${RDS_ENDPOINT}"
-update_env "RDS_DATABASE"     "${RDS_DATABASE}"
+update_env "EKS_CLUSTER_NAME"    "${EKS_CLUSTER_NAME}"
+update_env "RDS_ENDPOINT"        "${RDS_ENDPOINT}"
+update_env "RDS_DATABASE"        "${RDS_DATABASE}"
+update_env "RDS_ADMIN_USERNAME"  "${RDS_ADMIN_USERNAME}"
 
 echo ""
 info "Core infrastructure is ready"

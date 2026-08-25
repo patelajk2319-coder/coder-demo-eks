@@ -4,6 +4,9 @@ locals {
   # would also mean revisiting AZ/subnet assumptions anyway.
   aws_region = "eu-west-1"
 
+  # Fixed, not a variable — nothing in this repo ever overrides it.
+  postgres_admin_username = "pgadmin"
+
   common_tags = merge(var.tags, {
     region = local.aws_region
   })

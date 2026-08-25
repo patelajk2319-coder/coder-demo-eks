@@ -20,10 +20,8 @@ section "Coder on EKS — Connection Info"
 
 if [[ -f "${INIT_FILE}" ]]; then
   ACCESS_URL=$(jq -r '.access_url'   "${INIT_FILE}")
-  ADMIN_USER=$(jq -r '.admin_user'   "${INIT_FILE}")
   ADMIN_EMAIL=$(jq -r '.admin_email' "${INIT_FILE}")
   echo "  URL (VPC-internal): ${ACCESS_URL}"
-  echo "  User:                ${ADMIN_USER}"
   echo "  Email:               ${ADMIN_EMAIL}"
   echo "  Password:            (see .env → CODER_ADMIN_PASSWORD)"
   echo ""

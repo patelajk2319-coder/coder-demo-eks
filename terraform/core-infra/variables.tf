@@ -58,12 +58,6 @@ variable "log_retention_days" {
   default     = 30
 }
 
-variable "postgres_admin_username" {
-  description = "RDS PostgreSQL administrator username"
-  type        = string
-  default     = "pgadmin"
-}
-
 variable "postgres_admin_password" {
   description = "RDS PostgreSQL administrator password"
   type        = string

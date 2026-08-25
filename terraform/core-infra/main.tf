@@ -60,7 +60,7 @@ module "rds" {
   engine_version = var.postgres_engine_version
   instance_class = var.postgres_instance_class
   storage_gb     = var.postgres_storage_gb
-  admin_username = var.postgres_admin_username
+  admin_username = local.postgres_admin_username
   admin_password = var.postgres_admin_password
 
   tags = local.common_tags
