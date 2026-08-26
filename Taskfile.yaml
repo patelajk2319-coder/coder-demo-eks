@@ -125,6 +125,11 @@ tasks:
     cmds:
       - bash scripts/tools/info.sh
 
+  create-provisioner-key:
+    desc: Mint a provisioner key for an external provisioner (NAME=, TAG=key=value)
+    cmds:
+      - bash scripts/tools/create_provisioner_key.sh "{{.NAME}}" "{{.TAG}}"
+
   audit-logs:
     desc: Export Coder AI governance audit logs to data/audit-logs.json
     aliases: [audit]

@@ -43,14 +43,20 @@ resource "aws_subnet" "public" {
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
   tags = merge(var.tags, {
     Name = "${var.name}-public"
   })
+}
+
+# Standalone, not an inline `route` block on the table above — an inline
+# block treats itself as the sole source of truth for the whole table and
+# deletes any route added by a different Terraform config (e.g. a peered
+# team cluster's VPC peering route) on the next apply. See
+# coder-team-cluster-demo/terraform/cluster/network.tf for where that bit us.
+resource "aws_route" "public_internet" {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id              = aws_internet_gateway.main.id
 }
 
 resource "aws_route_table_association" "public" {
@@ -100,14 +106,16 @@ resource "aws_subnet" "private" {
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main.id
-  }
-
   tags = merge(var.tags, {
     Name = "${var.name}-private"
   })
+}
+
+# Standalone — see aws_route.public_internet above for why.
+resource "aws_route" "private_internet" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id          = aws_nat_gateway.main.id
 }
 
 resource "aws_route_table_association" "private" {
