@@ -38,9 +38,9 @@ output "anthropic_secret_arn" {
   value       = module.secrets.anthropic_secret_arn
 }
 
-output "postgres_secret_arn" {
-  description = "ARN of the Secrets Manager secret holding the PostgreSQL admin password"
-  value       = module.secrets.postgres_secret_arn
+output "github_oauth_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the GitHub OAuth client secret"
+  value       = module.secrets.github_oauth_secret_arn
 }
 
 output "coder_identity_role_arn" {

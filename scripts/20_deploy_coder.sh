@@ -22,6 +22,7 @@ set -a; source "${ROOT_DIR}/.env"; set +a
 : "${EKS_CLUSTER_NAME:?EKS_CLUSTER_NAME missing — run task infra first}"
 : "${TF_VAR_postgres_admin_password:?TF_VAR_postgres_admin_password must be set in .env}"
 : "${CODER_VERSION:?CODER_VERSION must be set in .env}"
+: "${GITHUB_OAUTH_CLIENT_ID:?GITHUB_OAUTH_CLIENT_ID must be set in .env}"
 
 # shellcheck source=scripts/lib/cluster_context.sh
 source "${SCRIPT_DIR}/lib/cluster_context.sh"
@@ -40,6 +41,7 @@ section "Deploying Coder to EKS..."
 terraform -chdir="${TF_DIR}" apply \
   -var="coder_access_url=${ACCESS_URL}" \
   -var="coder_version=${CODER_VERSION}" \
+  -var="github_oauth_client_id=${GITHUB_OAUTH_CLIENT_ID}" \
   -auto-approve
 
 # ── Wait for Coder rollout ─────────────────────────────────────────────────────
@@ -79,6 +81,7 @@ section "Re-applying Coder with correct access URL..."
 terraform -chdir="${TF_DIR}" apply \
   -var="coder_access_url=${CODER_URL}" \
   -var="coder_version=${CODER_VERSION}" \
+  -var="github_oauth_client_id=${GITHUB_OAUTH_CLIENT_ID}" \
   -auto-approve
 
 echo ""

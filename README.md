@@ -27,11 +27,21 @@ clear which is which:
 
 - **You fill these in**: `AWS_PROFILE`, `CODER_ADMIN_PASSWORD`,
   `TF_VAR_postgres_admin_password`, `ANTHROPIC_API_KEY` (a placeholder is fine if you
-  don't need AI Bridge features yet — see the comment above it), plus a couple that
-  already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`).
+  don't need AI Bridge features yet — see the comment above it), `GITHUB_OAUTH_CLIENT_ID`
+  / `GITHUB_OAUTH_CLIENT_SECRET` (from a GitHub OAuth App — see the comment above them),
+  plus a couple that already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`).
 - **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
   `task coder`) and `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
   `task infra`).
+
+External auth (`CODER_EXTERNAL_AUTH_*`) lets workspace templates authenticate git
+operations as each developer's own GitHub identity via `data.coder_external_auth`,
+instead of a shared PAT baked into the template. It uses GitHub's device flow (a
+code entered at `github.com/login/device`), not a browser-redirect callback —
+required here because `CODER_ACCESS_URL` is the internal NLB hostname, which a
+developer's browser can never land back on after a redirect. Enable "Device Flow"
+on the GitHub OAuth App itself (its settings page, alongside the Client ID/Secret)
+or authorization will fail.
 
 There's no region variable — it's fixed to `eu-west-1` directly in Terraform (a
 single-region demo stack, not something meant to be reconfigured per-deploy). Your

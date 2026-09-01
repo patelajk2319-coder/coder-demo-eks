@@ -22,6 +22,7 @@ fi
 set -a; source "${ROOT_DIR}/.env"; set +a
 
 : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in .env}"
+: "${GITHUB_OAUTH_CLIENT_SECRET:?GITHUB_OAUTH_CLIENT_SECRET must be set in .env}"
 
 stop_coder_port_forward
 
@@ -34,6 +35,7 @@ if [[ -f "${CODER_TF_DIR}/terraform.tfstate" ]]; then
   section "Destroying Coder (lets the AWS Load Balancer Controller clean up the NLB first)..."
   terraform -chdir="${CODER_TF_DIR}" destroy -auto-approve \
     -var="coder_access_url=${CODER_ACCESS_URL:-http://placeholder}" \
+    -var="github_oauth_client_id=${GITHUB_OAUTH_CLIENT_ID:-placeholder}" \
     || warn "Destroying terraform/coder failed — the NLB and its security groups may not have been cleaned up; addons destroy below may fail on DependencyViolation as a result"
 fi
 
@@ -49,6 +51,7 @@ fi
 section "Destroying VPC, EKS, RDS, and Secrets Manager..."
 terraform -chdir="${CORE_TF_DIR}" destroy -auto-approve \
   -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
+  -var="github_oauth_client_secret=${GITHUB_OAUTH_CLIENT_SECRET}" \
   || warn "Terraform destroy failed — some resources may require manual cleanup in the AWS console"
 
 # terraform/coder and terraform/addons state now refer to resources that no

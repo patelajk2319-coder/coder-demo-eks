@@ -3,9 +3,9 @@ output "anthropic_secret_arn" {
   value       = aws_secretsmanager_secret.anthropic_api_key.arn
 }
 
-output "postgres_secret_arn" {
-  description = "ARN of the PostgreSQL admin password secret"
-  value       = aws_secretsmanager_secret.postgres_admin_password.arn
+output "github_oauth_secret_arn" {
+  description = "ARN of the GitHub OAuth client secret"
+  value       = aws_secretsmanager_secret.github_oauth_client_secret.arn
 }
 
 output "coder_role_arn" {

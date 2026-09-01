@@ -28,6 +28,18 @@ resource "aws_secretsmanager_secret_version" "postgres_admin_password" {
   secret_string = var.postgres_admin_password
 }
 
+resource "aws_secretsmanager_secret" "github_oauth_client_secret" {
+  name = "${var.name_prefix}-github-oauth-client-secret"
+  tags = var.tags
+
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "github_oauth_client_secret" {
+  secret_id     = aws_secretsmanager_secret.github_oauth_client_secret.id
+  secret_string = var.github_oauth_client_secret
+}
+
 # ── Coder workload identity — IRSA role for the Coder pod's service account ───
 
 data "aws_iam_policy_document" "coder_assume" {
@@ -60,7 +72,7 @@ resource "aws_iam_role" "coder" {
   tags               = var.tags
 }
 
-# Least privilege — read-only, scoped to just the two secrets Coder needs.
+# Least privilege — read-only, scoped to just the secrets Coder needs.
 data "aws_iam_policy_document" "coder_secrets_read" {
   statement {
     effect  = "Allow"
@@ -68,6 +80,7 @@ data "aws_iam_policy_document" "coder_secrets_read" {
     resources = [
       aws_secretsmanager_secret.anthropic_api_key.arn,
       aws_secretsmanager_secret.postgres_admin_password.arn,
+      aws_secretsmanager_secret.github_oauth_client_secret.arn,
     ]
   }
 }

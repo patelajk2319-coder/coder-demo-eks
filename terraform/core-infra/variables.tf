@@ -88,6 +88,12 @@ variable "anthropic_api_key" {
   sensitive   = true
 }
 
+variable "github_oauth_client_secret" {
+  description = "GitHub OAuth App client secret — stored in Secrets Manager for Coder's external auth integration"
+  type        = string
+  sensitive   = true
+}
+
 variable "tags" {
   description = "Common tags applied to all resources"
   type        = map(string)

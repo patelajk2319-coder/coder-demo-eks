@@ -93,8 +93,13 @@ resource "kubernetes_manifest" "secret_provider_class" {
     spec = {
       provider = "aws"
       parameters = {
-        region  = local.aws_region
-        objects = "- objectName: \"${data.terraform_remote_state.core.outputs.anthropic_secret_arn}\"\n  objectType: \"secretsmanager\"\n"
+        region = local.aws_region
+        objects = join("", [
+          "- objectName: \"${data.terraform_remote_state.core.outputs.anthropic_secret_arn}\"\n",
+          "  objectType: \"secretsmanager\"\n",
+          "- objectName: \"${data.terraform_remote_state.core.outputs.github_oauth_secret_arn}\"\n",
+          "  objectType: \"secretsmanager\"\n",
+        ])
       }
       # Sync to a Kubernetes Secret so Helm can reference it via secretEnvs.
       secretObjects = [
@@ -105,6 +110,10 @@ resource "kubernetes_manifest" "secret_provider_class" {
             {
               objectName = data.terraform_remote_state.core.outputs.anthropic_secret_arn
               key        = "CODER_AIBRIDGE_ANTHROPIC_KEY"
+            },
+            {
+              objectName = data.terraform_remote_state.core.outputs.github_oauth_secret_arn
+              key        = "CODER_EXTERNAL_AUTH_0_CLIENT_SECRET"
             },
           ]
         }
@@ -168,6 +177,35 @@ resource "helm_release" "coder" {
               secretKeyRef = {
                 name = "coder-secrets"
                 key  = "CODER_AIBRIDGE_ANTHROPIC_KEY"
+              }
+            }
+          },
+          # External auth — lets workspace templates use data.coder_external_auth
+          # instead of a shared PAT template variable. Each developer authorizes
+          # their own GitHub identity once via the dashboard.
+          #
+          # Uses GitHub's device flow, not the browser-redirect flow: the normal
+          # flow's OAuth callback is built from CODER_ACCESS_URL, which is the
+          # internal NLB hostname — never reachable by a developer's browser (see
+          # README) — so GitHub would reject it as an unregistered redirect_uri.
+          # Device flow has no callback at all (the user enters a code at
+          # github.com/login/device instead), sidestepping the problem entirely.
+          { name = "CODER_EXTERNAL_AUTH_0_ID", value = "github" },
+          { name = "CODER_EXTERNAL_AUTH_0_TYPE", value = "github" },
+          { name = "CODER_EXTERNAL_AUTH_0_CLIENT_ID", value = var.github_oauth_client_id },
+          { name = "CODER_EXTERNAL_AUTH_0_DEVICE_FLOW", value = "true" },
+          # Coder's default scopes for GitHub are "repo workflow", but its device
+          # code request encodes multiple scopes as repeated query params instead
+          # of one space-joined value — GitHub's device endpoint keeps only the
+          # last one, silently dropping "repo" (the one git clone/pull actually
+          # needs). Overriding to a single scope sidesteps the encoding bug.
+          { name = "CODER_EXTERNAL_AUTH_0_SCOPES", value = "repo" },
+          {
+            name = "CODER_EXTERNAL_AUTH_0_CLIENT_SECRET"
+            valueFrom = {
+              secretKeyRef = {
+                name = "coder-secrets"
+                key  = "CODER_EXTERNAL_AUTH_0_CLIENT_SECRET"
               }
             }
           },

@@ -25,6 +25,12 @@ variable "postgres_admin_password" {
   sensitive   = true
 }
 
+variable "github_oauth_client_secret" {
+  description = "GitHub OAuth App client secret, for Coder's external auth integration"
+  type        = string
+  sensitive   = true
+}
+
 variable "tags" {
   description = "Tags applied to all resources"
   type        = map(string)
