@@ -8,6 +8,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORE_TF_DIR="${ROOT_DIR}/terraform/core-infra"
 ADDONS_TF_DIR="${ROOT_DIR}/terraform/addons"
 CODER_TF_DIR="${ROOT_DIR}/terraform/coder"
+CODERD_TF_DIR="${ROOT_DIR}/terraform/coderd"
 
 # shellcheck source=scripts/lib/colors.sh
 source "${SCRIPT_DIR}/../lib/colors.sh"
@@ -18,11 +19,26 @@ if [[ ! -f "${ROOT_DIR}/.env" ]]; then
   error ".env not found"
   exit 1
 fi
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in .env}"
 : "${GITHUB_OAUTH_CLIENT_SECRET:?GITHUB_OAUTH_CLIENT_SECRET must be set in .env}"
+
+# Destroy platform config (license, provisioner keys) first, while the
+# coderd API this state's provider talks to is still alive — the Helm
+# release (and coderd itself) gets destroyed a few steps below.
+if [[ -f "${CODERD_TF_DIR}/terraform.tfstate" ]]; then
+  : "${CODER_API_TOKEN:?CODER_API_TOKEN must be set in .env to destroy terraform/coderd}"
+  section "Destroying Coder platform config (license, provisioner keys)..."
+  ensure_coder_port_forward
+  terraform -chdir="${CODERD_TF_DIR}" destroy -auto-approve \
+    -var="coder_url=http://localhost:${CODER_PORT_FORWARD_LOCAL_PORT}" \
+    -var="coder_api_token=${CODER_API_TOKEN}" \
+    || warn "Destroying terraform/coderd failed — license/provisioner-key resources may need manual cleanup via the dashboard before the cluster underneath them is gone"
+fi
 
 stop_coder_port_forward
 
@@ -54,10 +70,11 @@ terraform -chdir="${CORE_TF_DIR}" destroy -auto-approve \
   -var="github_oauth_client_secret=${GITHUB_OAUTH_CLIENT_SECRET}" \
   || warn "Terraform destroy failed — some resources may require manual cleanup in the AWS console"
 
-# terraform/coder and terraform/addons state now refer to resources that no
-# longer exist — clear them.
-section "Clearing local terraform/coder and terraform/addons state..."
+# terraform/coder, terraform/coderd, and terraform/addons state now refer to
+# resources that no longer exist — clear them.
+section "Clearing local terraform/coder, terraform/coderd, and terraform/addons state..."
 rm -f "${CODER_TF_DIR}"/terraform.tfstate "${CODER_TF_DIR}"/terraform.tfstate.backup
+rm -f "${CODERD_TF_DIR}"/terraform.tfstate "${CODERD_TF_DIR}"/terraform.tfstate.backup
 rm -f "${ADDONS_TF_DIR}"/terraform.tfstate "${ADDONS_TF_DIR}"/terraform.tfstate.backup
 
 rm -f "${ROOT_DIR}/coder-init.json"

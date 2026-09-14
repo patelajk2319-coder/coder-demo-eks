@@ -169,6 +169,9 @@ resource "helm_release" "coder" {
           { name = "CODER_TELEMETRY_ENABLE", value = "true" },
           { name = "CODER_SESSION_DURATION", value = "720h" },
           { name = "CODER_MAX_TOKEN_LIFETIME", value = "876h" },
+          # Owner-created tokens (the coderd provider's terraform-coderd token) hit
+          # this cap instead of CODER_MAX_TOKEN_LIFETIME — defaults to 168h if unset.
+          { name = "CODER_MAX_ADMIN_TOKEN_LIFETIME", value = "876h" },
           { name = "CODER_DEFAULT_OAUTH_REFRESH_LIFETIME", value = "876h" },
           { name = "CODER_AIBRIDGE_ENABLED", value = "true" },
           {

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Initialise Coder: create admin user, write credentials to coder-init.json, apply license.
+# Initialise Coder: create admin user, write credentials to coder-init.json,
+# mint a long-lived API token for the coderd Terraform provider (task coder-config).
 
 set -euo pipefail
 
@@ -17,8 +18,10 @@ if [[ ! -f "${ROOT_DIR}/.env" ]]; then
   error ".env not found"
   exit 1
 fi
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 : "${CODER_ACCESS_URL:?CODER_ACCESS_URL must be set in .env — run task coder first}"
 : "${CODER_ADMIN_EMAIL:?CODER_ADMIN_EMAIL must be set in .env}"
@@ -77,22 +80,34 @@ EOF
 chmod 600 "${ROOT_DIR}/coder-init.json"
 info "Credentials written to coder-init.json"
 
-# ── Apply license ──────────────────────────────────────────────────────────────
-LICENSE_FILE="${ROOT_DIR}/licence.lic"
-if [[ -f "${LICENSE_FILE}" ]]; then
-  section "Checking for an existing license..."
-  EXISTING=$(curl -sf "${LOCAL_CODER_URL}/api/v2/licenses" \
-    -H "Coder-Session-Token: ${TOKEN}" | jq 'length')
-  if [[ "${EXISTING}" -gt 0 ]]; then
-    info "License already active — skipping upload"
-  else
-    section "Uploading license..."
-    curl -sf -X POST "${LOCAL_CODER_URL}/api/v2/licenses" \
-      -H "Coder-Session-Token: ${TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "{\"license\":\"$(cat "${LICENSE_FILE}")\"}" >/dev/null
-    info "License applied"
+# License upload and provisioner-key minting are now managed declaratively by
+# `task coder-config` (terraform/coderd, coderd_license/coderd_provisioner_key)
+# — not this script. See below for the one-time API token that step needs.
+
+# ── Mint a long-lived API token for Terraform (the coderd provider) ───────────
+# A dedicated token, not this script's own interactive session token above:
+# keeps Terraform's auth independent of CODER_SESSION_DURATION and password
+# logins. Shown once — if CODER_API_TOKEN in .env stops working (revoked,
+# expired), clear it and re-run this script to mint a fresh one.
+if [[ -z "${CODER_API_TOKEN:-}" ]]; then
+  section "Minting a long-lived API token for Terraform (coderd provider)..."
+  CODER_URL="${LOCAL_CODER_URL}" coder login "${LOCAL_CODER_URL}" --token "${TOKEN}" &>/dev/null
+
+  API_TOKEN=$(CODER_URL="${LOCAL_CODER_URL}" coder tokens create \
+    --name terraform-coderd \
+    --lifetime 876h)
+
+  if [[ -z "${API_TOKEN}" ]]; then
+    error "Failed to mint a Terraform API token"
+    exit 1
   fi
+
+  echo ""
+  warn "CODER_API_TOKEN (shown once — add it to .env now):"
+  warn "  ${API_TOKEN}"
+  warn "Needed by: task coder-config (this repo) and coder-template-api-python's .env"
+else
+  info "CODER_API_TOKEN already set in .env — skipping mint"
 fi
 
 echo ""
@@ -101,3 +116,4 @@ info "Coder URL (VPC-internal): ${CODER_ACCESS_URL}"
 info "Local access:             ${LOCAL_CODER_URL}"
 info "Admin user:               ${CODER_ADMIN_EMAIL}"
 info "Port-forward left running — stop with: task port-forward-stop"
+info "Next: add CODER_API_TOKEN to .env (if just minted), then run: task coder-config"

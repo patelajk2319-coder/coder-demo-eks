@@ -17,8 +17,10 @@ if [[ ! -f "${ROOT_DIR}/.env" ]]; then
   error ".env not found"
   exit 1
 fi
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 : "${CODER_VERSION:?CODER_VERSION must be set in .env}"
 

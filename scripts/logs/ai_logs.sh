@@ -15,8 +15,10 @@ source "${SCRIPT_DIR}/../lib/port_forward.sh"
 # shellcheck source=scripts/lib/coder_api.sh
 source "${SCRIPT_DIR}/../lib/coder_api.sh"
 
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 : "${CODER_ADMIN_EMAIL:?CODER_ADMIN_EMAIL must be set in .env}"
 : "${CODER_ADMIN_PASSWORD:?CODER_ADMIN_PASSWORD must be set in .env}"

@@ -9,8 +9,10 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=scripts/lib/colors.sh
 source "${SCRIPT_DIR}/../lib/colors.sh"
 
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 # shellcheck source=scripts/lib/cluster_context.sh
 source "${SCRIPT_DIR}/../lib/cluster_context.sh"
 

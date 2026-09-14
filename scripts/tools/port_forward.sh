@@ -13,8 +13,10 @@ if [[ ! -f "${ROOT_DIR}/.env" ]]; then
   error ".env not found — copy .env.example and fill in values"
   exit 1
 fi
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 # shellcheck source=scripts/lib/cluster_context.sh
 source "${SCRIPT_DIR}/../lib/cluster_context.sh"

@@ -13,7 +13,9 @@ source "${SCRIPT_DIR}/lib/colors.sh"
 
 # shellcheck source=/dev/null
 if [[ -f "${ROOT_DIR}/.env" ]]; then
-  set -a; source "${ROOT_DIR}/.env"; set +a
+  set -a
+  source "${ROOT_DIR}/.env"
+  set +a
 fi
 
 if [[ -n "${AWS_PROFILE:-}" ]] && aws configure get sso_session --profile "${AWS_PROFILE}" &>/dev/null; then

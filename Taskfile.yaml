@@ -9,10 +9,12 @@
 #
 # Usage:
 #   One-time deployment (or after an infra/Coder version bump):
-#     task login  - Validate AWS credentials
-#     task infra  - Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons
-#     task coder  - Deploy Coder to EKS
-#     task init   - Initialise Coder; also starts a persistent port-forward
+#     task login         - Validate AWS credentials
+#     task up            - infra + coder + init in one go (see below for the individual steps)
+#     task infra         - Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons
+#     task coder         - Deploy Coder to EKS
+#     task init          - Initialise Coder; also starts a persistent port-forward
+#     task coder-config  - Apply platform config (license, provisioner keys) via Terraform
 #
 #   Utility tasks:
 #     task status            - Check Coder pod status
@@ -37,6 +39,9 @@
 #   Cleanup:
 #     task clean        - Reset Coder to a clean state (keeps EKS + AWS managed services)
 #     task nuke         - Destroy ALL AWS infrastructure including EKS
+#
+#   Validation:
+#     task validate      - terraform fmt/validate (all terraform/ dirs) + shellcheck
 # =============================================================================
 
 version: '3'
@@ -61,6 +66,13 @@ tasks:
   # Main Deployment Tasks
   # ---------------------------------------------------------------------------
 
+  up:
+    desc: Full deploy — infra, then Coder, then init (one command for the whole stack)
+    cmds:
+      - task: infra
+      - task: coder
+      - task: init
+
   infra:
     desc: Deploy EKS cluster, RDS PostgreSQL, VPC, and cluster add-ons
     cmds:
@@ -72,9 +84,14 @@ tasks:
       - bash scripts/20_deploy_coder.sh
 
   init:
-    desc: Initialise Coder — create admin user and write credentials to coder-init.json
+    desc: Initialise Coder — create admin user, write credentials, mint an API token for coder-config
     cmds:
       - bash scripts/30_init_coder.sh
+
+  coder-config:
+    desc: Apply Coder platform config (license, provisioner keys) via the coderd Terraform provider
+    cmds:
+      - bash scripts/40_deploy_coderd.sh
 
   # ---------------------------------------------------------------------------
   # Status and Kubernetes Operations
@@ -124,11 +141,6 @@ tasks:
     desc: Display Coder access URL, admin credentials, and cluster state
     cmds:
       - bash scripts/tools/info.sh
-
-  create-provisioner-key:
-    desc: Mint a provisioner key for an external provisioner (NAME=, TAG=key=value)
-    cmds:
-      - bash scripts/tools/create_provisioner_key.sh "{{.NAME}}" "{{.TAG}}"
 
   audit-logs:
     desc: Export Coder AI governance audit logs to data/audit-logs.json
@@ -182,6 +194,19 @@ tasks:
     desc: Destroy ALL AWS infrastructure including EKS and RDS
     cmds:
       - bash scripts/tools/nuke.sh
+
+  # ---------------------------------------------------------------------------
+  # Validation
+  # ---------------------------------------------------------------------------
+
+  validate:
+    desc: terraform fmt/validate (all four terraform/ directories) + shellcheck
+    cmds:
+      - for: [core-infra, addons, coder, coderd]
+        cmd: terraform -chdir=terraform/{{.ITEM}} fmt -check -diff
+      - for: [core-infra, addons, coder, coderd]
+        cmd: terraform -chdir=terraform/{{.ITEM}} validate
+      - shellcheck scripts/*.sh scripts/lib/*.sh scripts/tools/*.sh scripts/logs/*.sh
 
   help:
     desc: Show all available tasks

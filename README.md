@@ -13,7 +13,7 @@ Workspaces, agent templates, and AI task provisioning live in a separate repo (i
 
 ### Required Tools (install via Homebrew)
 ```bash
-brew install terraform awscli kubectl jq go-task coder
+brew install terraform awscli kubectl jq go-task coder shellcheck
 ```
 
 ## Configuration
@@ -33,6 +33,10 @@ clear which is which:
 - **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
   `task coder`) and `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
   `task infra`).
+- **Minted, but you paste it in**: `CODER_API_TOKEN` — `task init` mints this and
+  prints it once (Coder never shows it again); add it to `.env` before running
+  `task coder-config`, and hand the same value to `coder-template-api-python`'s
+  `.env` too.
 
 External auth (`CODER_EXTERNAL_AUTH_*`) lets workspace templates authenticate git
 operations as each developer's own GitHub identity via `data.coder_external_auth`,
@@ -45,20 +49,24 @@ or authorization will fail.
 
 There's no region variable — it's fixed to `eu-west-1` directly in Terraform (a
 single-region demo stack, not something meant to be reconfigured per-deploy). Your
-`AWS_PROFILE` needs to resolve to that region. Terraform state is also how the three
-`terraform/` directories talk to each other, via `terraform_remote_state` instead of
-scripts threading `-var` flags: `core-infra` (VPC, EKS, RDS, Secrets Manager — pure
-AWS, no kubernetes/helm needed) is read directly by both `addons` (the AWS Load
-Balancer Controller and Secrets Store CSI driver — the only things that actually
-need kubernetes/helm) and `coder` (the Helm release).
+`AWS_PROFILE` needs to resolve to that region. Terraform state is also how three of
+the four `terraform/` directories talk to each other, via `terraform_remote_state`
+instead of scripts threading `-var` flags: `core-infra` (VPC, EKS, RDS, Secrets
+Manager — pure AWS, no kubernetes/helm needed) is read directly by both `addons`
+(the AWS Load Balancer Controller and Secrets Store CSI driver — the only things
+that actually need kubernetes/helm) and `coder` (the Helm release). The fourth,
+`coderd`, is independent of that chain — it talks to the Coder API itself (via the
+`coderd` Terraform provider), not AWS or Kubernetes, so it only needs `CODER_API_TOKEN`
+and a reachable Coder URL, not any other directory's state.
 
 ## Premium License (optional)
 
 If you have a Coder Premium license, drop the file at `licence.lic` in the repo
-root before running `task init` (or re-run `task init` any time afterwards —
-it's idempotent). `licence.lic` is gitignored (`*.lic`) and must never be
-committed; if it's absent, `task init` just skips this step and Coder runs on
-the open-source feature set as normal.
+root before running `task coder-config` (or re-run `task coder-config` any time
+afterwards — it's idempotent, and the Terraform diff will show the license as
+unchanged if nothing about it moved). `licence.lic` is gitignored (`*.lic`) and
+must never be committed; if it's absent, the `coderd_license` resource is simply
+never created and Coder runs on the open-source feature set as normal.
 
 Check what's currently applied with:
 ```bash
@@ -87,10 +95,17 @@ ANTHROPIC_API_KEY=<your-anthropic-key>
 
 ### 3. Deploy the Stack
 ```bash
-task login  # Validate AWS credentials
-task infra  # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
-task coder  # Coder Helm release
-task init   # Create admin user, write credentials, apply licence.lic if present
+task login         # Validate AWS credentials
+task up            # infra + coder + init in one go (or run the three separately, below)
+# add the printed CODER_API_TOKEN to .env, then:
+task coder-config  # Apply license (if licence.lic present) + provisioner keys
+```
+
+`task up` is shorthand for:
+```bash
+task infra         # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
+task coder         # Coder Helm release
+task init          # Create admin user, write credentials, mint an API token
 ```
 
 ### 4. Access Coder
@@ -108,7 +123,7 @@ Run `task info` to see the internal access URL, admin credentials, and cluster s
 ## Cleanup
 
 ```bash
-# Reset Coder (keeps EKS + RDS running — re-deploy with task coder && task init)
+# Reset Coder (keeps EKS + RDS running — re-deploy with task coder && task init && task coder-config)
 task clean
 
 # Destroy all AWS infrastructure including EKS and RDS
@@ -120,9 +135,11 @@ task nuke
 | Task | Description |
 |------|-------------|
 | `task login` | Validate AWS credentials |
+| `task up` | Full deploy — `infra` + `coder` + `init` in one command |
 | `task infra` | Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons |
 | `task coder` | Deploy Coder Helm release to EKS |
-| `task init` | Create Coder admin user, write credentials, apply `licence.lic` if present |
+| `task init` | Create Coder admin user, write credentials, mint an API token for `coder-config` |
+| `task coder-config` | Apply Coder platform config (license, provisioner keys) via the `coderd` Terraform provider |
 | `task clean` | Reset Coder to clean state (keeps EKS + RDS) |
 | `task nuke` | Destroy all AWS infrastructure |
 | `task status` | Check Coder pod status |
@@ -138,4 +155,5 @@ task nuke
 | `task connection-logs` | Export Coder connection logs |
 | `task upgrade-coder` | Upgrade Coder to the latest (or a specific, `V=x.y.z`) version |
 | `task rotate-secret` | Rotate a Secrets Manager secret (`SECRET_NAME=`, `SECRET_VALUE=`) and restart Coder |
+| `task validate` | terraform fmt/validate (all `terraform/` dirs) + shellcheck |
 | `task help` | List all available tasks |

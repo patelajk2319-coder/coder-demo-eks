@@ -3,13 +3,19 @@
 # release and terraform/coder state, drops and recreates the database, clears
 # the access URL from .env. Doesn't touch workspace namespaces (coder-ws-*) —
 # run your workspaces repo's clean task first if you have one.
-# After this: task coder && task init
+# After this: task coder && task init && task coder-config
+#
+# The DB drop below also wipes everything terraform/coderd manages (license,
+# provisioner keys) — they're DB-backed Coder platform resources, same as
+# templates/workspaces. task coder-config mints a *new* provisioner key on
+# re-apply, so coder-team-cluster-demo's .env needs updating with it too.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TF_DIR="${ROOT_DIR}/terraform/coder"
+CODERD_TF_DIR="${ROOT_DIR}/terraform/coderd"
 
 # shellcheck source=scripts/lib/colors.sh
 source "${SCRIPT_DIR}/../lib/colors.sh"
@@ -20,8 +26,10 @@ if [[ ! -f "${ROOT_DIR}/.env" ]]; then
   error ".env not found — nothing to clean"
   exit 1
 fi
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 : "${EKS_CLUSTER_NAME:?EKS_CLUSTER_NAME must be set in .env — run task infra first}"
 : "${RDS_ENDPOINT:?RDS_ENDPOINT must be set in .env — run task infra first}"
@@ -54,6 +62,16 @@ terraform -chdir="${TF_DIR}" state rm kubernetes_manifest.secret_provider_class 
 terraform -chdir="${TF_DIR}" state rm helm_release.coder 2>/dev/null || true
 terraform -chdir="${TF_DIR}" state rm kubernetes_namespace.coder 2>/dev/null || true
 info "Terraform state cleared"
+
+# ── Clear Terraform coderd state ───────────────────────────────────────────────
+# Both resources are Coder DB rows — gone once the database below is dropped,
+# regardless of what Terraform's state file still says.
+if [[ -f "${CODERD_TF_DIR}/terraform.tfstate" ]]; then
+  section "Clearing terraform/coderd state..."
+  terraform -chdir="${CODERD_TF_DIR}" state rm 'coderd_license.this[0]' 2>/dev/null || true
+  terraform -chdir="${CODERD_TF_DIR}" state rm coderd_provisioner_key.team_demo 2>/dev/null || true
+  info "Terraform state cleared"
+fi
 
 # ── Reset the Coder database ───────────────────────────────────────────────────
 section "Resetting Coder database..."
@@ -94,4 +112,5 @@ info "Access URL cleared, coder-init.json removed"
 
 echo ""
 info "Coder has been reset — EKS and RDS are still running"
-info "Re-deploy with: task coder && task init"
+info "Re-deploy with: task coder && task init && task coder-config"
+info "task coder-config will mint a NEW provisioner key — update coder-team-cluster-demo/.env with it"

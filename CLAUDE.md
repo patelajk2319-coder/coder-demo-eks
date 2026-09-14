@@ -18,7 +18,7 @@ US English throughout all documentation, comments, and output strings.
 - Validate required environment variables at the top of each script using `: "${VAR:?message}"`
 
 ## Terraform
-- Official providers only — never community forks (`hashicorp/aws`, `hashicorp/kubernetes`, `hashicorp/helm`, `hashicorp/tls`)
+- Official providers only — never community forks (`hashicorp/aws`, `hashicorp/kubernetes`, `hashicorp/helm`, `hashicorp/tls`, `coder/coderd`)
 - Version constraints: `~>` for providers, `>= 1.5.0` for Terraform itself
 - No heredocs for Kubernetes manifests — use `yamlencode()`
 - One module per logical concern; no monolithic main.tf files
@@ -41,10 +41,11 @@ US English throughout all documentation, comments, and output strings.
 
 ## Deployment Workflow
 Strict ordering must be followed:
-1. `task login`  — validate AWS credentials
-2. `task infra`  — deploy EKS cluster + RDS PostgreSQL + cluster add-ons via Terraform
-3. `task coder`  — deploy Coder to EKS via Terraform (Helm release)
-4. `task init`   — create admin user + write credentials to coder-init.json
+1. `task login`         — validate AWS credentials
+2. `task infra`         — deploy EKS cluster + RDS PostgreSQL + cluster add-ons via Terraform
+3. `task coder`         — deploy Coder to EKS via Terraform (Helm release)
+4. `task init`          — create admin user + write credentials to coder-init.json + mint an API token
+5. `task coder-config`  — apply platform config (license, provisioner keys) via the coderd Terraform provider
 
 ## Governance Notes (for interview context)
 - LLM API keys are stored in AWS Secrets Manager, read into the `coder` namespace

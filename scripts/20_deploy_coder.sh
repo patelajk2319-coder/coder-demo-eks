@@ -16,8 +16,10 @@ if [[ ! -f "${ROOT_DIR}/.env" ]]; then
   error ".env not found — run task infra first"
   exit 1
 fi
+set -a
 # shellcheck source=/dev/null
-set -a; source "${ROOT_DIR}/.env"; set +a
+source "${ROOT_DIR}/.env"
+set +a
 
 : "${EKS_CLUSTER_NAME:?EKS_CLUSTER_NAME missing — run task infra first}"
 : "${TF_VAR_postgres_admin_password:?TF_VAR_postgres_admin_password must be set in .env}"
