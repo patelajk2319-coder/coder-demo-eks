@@ -95,8 +95,6 @@ resource "kubernetes_manifest" "secret_provider_class" {
       parameters = {
         region = local.aws_region
         objects = join("", [
-          "- objectName: \"${data.terraform_remote_state.core.outputs.anthropic_secret_arn}\"\n",
-          "  objectType: \"secretsmanager\"\n",
           "- objectName: \"${data.terraform_remote_state.core.outputs.github_oauth_secret_arn}\"\n",
           "  objectType: \"secretsmanager\"\n",
         ])
@@ -107,10 +105,6 @@ resource "kubernetes_manifest" "secret_provider_class" {
           secretName = "coder-secrets"
           type       = "Opaque"
           data = [
-            {
-              objectName = data.terraform_remote_state.core.outputs.anthropic_secret_arn
-              key        = "CODER_AIBRIDGE_ANTHROPIC_KEY"
-            },
             {
               objectName = data.terraform_remote_state.core.outputs.github_oauth_secret_arn
               key        = "CODER_EXTERNAL_AUTH_0_CLIENT_SECRET"
@@ -174,15 +168,22 @@ resource "helm_release" "coder" {
           { name = "CODER_MAX_ADMIN_TOKEN_LIFETIME", value = "876h" },
           { name = "CODER_DEFAULT_OAUTH_REFRESH_LIFETIME", value = "876h" },
           { name = "CODER_AIBRIDGE_ENABLED", value = "true" },
-          {
-            name = "CODER_AIBRIDGE_ANTHROPIC_KEY"
-            valueFrom = {
-              secretKeyRef = {
-                name = "coder-secrets"
-                key  = "CODER_AIBRIDGE_ANTHROPIC_KEY"
-              }
-            }
-          },
+          # Amazon Bedrock as AI Bridge's model backend, not a direct Anthropic
+          # API key — authenticated via this pod's own IRSA role (see
+          # coder_bedrock_invoke in terraform/core-infra/modules/secrets), so
+          # there's no static key to store or rotate.
+          { name = "CODER_AIBRIDGE_BEDROCK_REGION", value = "eu-west-1" },
+          # claude-sonnet-5 is reachable and correctly routed, but Claude Code's
+          # default extended-thinking request shape ("thinking.type: enabled")
+          # isn't accepted by that specific model on Bedrock — it wants the
+          # newer "adaptive" thinking schema instead. claude-sonnet-4-5 accepts
+          # the classic schema but is blocked by a separate, account-level
+          # Anthropic "use case details" attestation gate in the Bedrock
+          # console, unrelated to this repo. claude-haiku-4-5 accepts the
+          # classic schema and isn't gated — verified end-to-end with a real
+          # Claude Code call. Swap to a bigger model once either is resolved.
+          { name = "CODER_AIBRIDGE_BEDROCK_MODEL", value = "eu.anthropic.claude-haiku-4-5-20251001-v1:0" },
+          { name = "CODER_AIBRIDGE_BEDROCK_SMALL_FAST_MODEL", value = "eu.anthropic.claude-haiku-4-5-20251001-v1:0" },
           # External auth — lets workspace templates use data.coder_external_auth
           # instead of a shared PAT template variable. Each developer authorizes
           # their own GitHub identity once via the dashboard.

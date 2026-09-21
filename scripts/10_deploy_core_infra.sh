@@ -29,7 +29,6 @@ source "${ROOT_DIR}/.env"
 set +a
 
 : "${TF_VAR_postgres_admin_password:?TF_VAR_postgres_admin_password must be set in .env}"
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in .env}"
 : "${GITHUB_OAUTH_CLIENT_SECRET:?GITHUB_OAUTH_CLIENT_SECRET must be set in .env}"
 
 section "Initialising Terraform (terraform/core-infra)..."
@@ -37,7 +36,6 @@ terraform -chdir="${CORE_TF_DIR}" init -upgrade
 
 section "Deploying VPC, EKS, RDS, and Secrets Manager..."
 terraform -chdir="${CORE_TF_DIR}" apply \
-  -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
   -var="github_oauth_client_secret=${GITHUB_OAUTH_CLIENT_SECRET}" \
   -auto-approve
 

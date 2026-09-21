@@ -82,12 +82,6 @@ variable "postgres_storage_gb" {
   default     = 32
 }
 
-variable "anthropic_api_key" {
-  description = "Anthropic API key — stored in Secrets Manager, never passed to Coder Terraform"
-  type        = string
-  sensitive   = true
-}
-
 variable "github_oauth_client_secret" {
   description = "GitHub OAuth App client secret — stored in Secrets Manager for Coder's external auth integration"
   type        = string

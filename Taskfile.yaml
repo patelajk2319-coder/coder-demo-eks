@@ -34,7 +34,7 @@
 #     task upgrade-coder V=2.34.6   - Upgrade Coder to a specific version
 #
 #   Secret rotation:
-#     task rotate-secret SECRET_NAME=anthropic-api-key SECRET_VALUE=sk-ant-... - Rotate a Secrets Manager secret and restart Coder
+#     task rotate-secret SECRET_NAME=github-oauth-client-secret SECRET_VALUE=... - Rotate a Secrets Manager secret and restart Coder
 #
 #   Cleanup:
 #     task clean        - Reset Coder to a clean state (keeps EKS + AWS managed services)

@@ -26,10 +26,10 @@ exactly (same variable names) and is the only one of the two safe to commit.
 clear which is which:
 
 - **You fill these in**: `AWS_PROFILE`, `CODER_ADMIN_PASSWORD`,
-  `TF_VAR_postgres_admin_password`, `ANTHROPIC_API_KEY` (a placeholder is fine if you
-  don't need AI Bridge features yet — see the comment above it), `GITHUB_OAUTH_CLIENT_ID`
-  / `GITHUB_OAUTH_CLIENT_SECRET` (from a GitHub OAuth App — see the comment above them),
-  plus a couple that already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`).
+  `TF_VAR_postgres_admin_password`, `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET`
+  (from a GitHub OAuth App — see the comment above them), plus a couple that already have
+  sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`). AI Bridge needs no variable
+  here at all — it authenticates to Amazon Bedrock via the Coder pod's own IRSA role.
 - **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
   `task coder`), `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
   `task infra`), and `CODER_API_TOKEN` (written by `task init`, which re-mints and
@@ -91,7 +91,6 @@ Fill in the values described in [Configuration](#configuration) above — at min
 ```env
 CODER_ADMIN_PASSWORD=<your-secure-password>
 TF_VAR_postgres_admin_password=<your-secure-password>
-ANTHROPIC_API_KEY=<your-anthropic-key>
 ```
 
 ### 3. Deploy the Stack

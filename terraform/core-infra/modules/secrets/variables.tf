@@ -13,12 +13,6 @@ variable "oidc_provider_url" {
   type        = string
 }
 
-variable "anthropic_api_key" {
-  description = "Anthropic API key to store in Secrets Manager"
-  type        = string
-  sensitive   = true
-}
-
 variable "postgres_admin_password" {
   description = "PostgreSQL admin password to store in Secrets Manager"
   type        = string

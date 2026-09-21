@@ -33,11 +33,6 @@ output "rds_admin_username" {
   value       = module.rds.admin_username
 }
 
-output "anthropic_secret_arn" {
-  description = "ARN of the Secrets Manager secret holding the Anthropic API key"
-  value       = module.secrets.anthropic_secret_arn
-}
-
 output "github_oauth_secret_arn" {
   description = "ARN of the Secrets Manager secret holding the GitHub OAuth client secret"
   value       = module.secrets.github_oauth_secret_arn

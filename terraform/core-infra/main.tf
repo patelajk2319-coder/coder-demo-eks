@@ -43,7 +43,6 @@ module "secrets" {
   oidc_provider_arn = module.eks.oidc_provider_arn
   oidc_provider_url = module.eks.oidc_provider_url
 
-  anthropic_api_key          = var.anthropic_api_key
   postgres_admin_password    = var.postgres_admin_password
   github_oauth_client_secret = var.github_oauth_client_secret
 
