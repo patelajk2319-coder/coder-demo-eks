@@ -173,16 +173,16 @@ resource "helm_release" "coder" {
           # coder_bedrock_invoke in terraform/core-infra/modules/secrets), so
           # there's no static key to store or rotate.
           { name = "CODER_AIBRIDGE_BEDROCK_REGION", value = "eu-west-1" },
-          # claude-sonnet-5 is reachable and correctly routed, but Claude Code's
-          # default extended-thinking request shape ("thinking.type: enabled")
-          # isn't accepted by that specific model on Bedrock — it wants the
-          # newer "adaptive" thinking schema instead. claude-sonnet-4-5 accepts
-          # the classic schema but is blocked by a separate, account-level
-          # Anthropic "use case details" attestation gate in the Bedrock
-          # console, unrelated to this repo. claude-haiku-4-5 accepts the
-          # classic schema and isn't gated — verified end-to-end with a real
-          # Claude Code call. Swap to a bigger model once either is resolved.
-          { name = "CODER_AIBRIDGE_BEDROCK_MODEL", value = "eu.anthropic.claude-haiku-4-5-20251001-v1:0" },
+          # claude-sonnet-5 needs CODER_VERSION >= 2.36.5 — v2.33.6's AI Bridge
+          # doesn't know this model requires the "adaptive" thinking schema
+          # (bedrockModelRequiresAdaptiveThinking() didn't list claude-sonnet-5
+          # until 2.36.5), so it let Claude Code's default "enabled"-shape
+          # thinking request through unconverted, and Bedrock rejected it.
+          # claude-sonnet-4-5/claude-haiku-4-5 both work around that gap but
+          # are subject to Anthropic's account-level Bedrock "use case
+          # details" attestation, which has intermittently gated one or the
+          # other during testing — sonnet-5 doesn't hit that gate.
+          { name = "CODER_AIBRIDGE_BEDROCK_MODEL", value = "eu.anthropic.claude-sonnet-5" },
           { name = "CODER_AIBRIDGE_BEDROCK_SMALL_FAST_MODEL", value = "eu.anthropic.claude-haiku-4-5-20251001-v1:0" },
           # External auth — lets workspace templates use data.coder_external_auth
           # instead of a shared PAT template variable. Each developer authorizes
