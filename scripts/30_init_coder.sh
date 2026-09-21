@@ -87,9 +87,17 @@ info "Credentials written to coder-init.json"
 # ── Mint a long-lived API token for Terraform (the coderd provider) ───────────
 # A dedicated token, not this script's own interactive session token above:
 # keeps Terraform's auth independent of CODER_SESSION_DURATION and password
-# logins. Shown once — if CODER_API_TOKEN in .env stops working (revoked,
-# expired), clear it and re-run this script to mint a fresh one.
-if [[ -z "${CODER_API_TOKEN:-}" ]]; then
+# logins. Re-minted whenever the existing one no longer authenticates — not
+# just when .env is empty — so a token orphaned by a database reset (task
+# clean) gets replaced automatically instead of silently going stale.
+TOKEN_STILL_VALID=false
+if [[ -n "${CODER_API_TOKEN:-}" ]]; then
+  if curl -sf -o /dev/null -H "Coder-Session-Token: ${CODER_API_TOKEN}" "${LOCAL_CODER_URL}/api/v2/users/me"; then
+    TOKEN_STILL_VALID=true
+  fi
+fi
+
+if [[ "${TOKEN_STILL_VALID}" == "false" ]]; then
   section "Minting a long-lived API token for Terraform (coderd provider)..."
   CODER_URL="${LOCAL_CODER_URL}" coder login "${LOCAL_CODER_URL}" --token "${TOKEN}" &>/dev/null
 
@@ -102,12 +110,24 @@ if [[ -z "${CODER_API_TOKEN:-}" ]]; then
     exit 1
   fi
 
+  MINTED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  # Timestamp lives as a comment above the value, not its own env var — .env
+  # should only hold variables the stack actually reads. Drop any prior copy
+  # of both lines, then write fresh ones together at the end.
+  sed -i '' '/^# CODER_API_TOKEN minted /d' "${ROOT_DIR}/.env"
+  sed -i '' '/^CODER_API_TOKEN=/d' "${ROOT_DIR}/.env"
+  {
+    echo "# CODER_API_TOKEN minted ${MINTED_AT}"
+    echo "CODER_API_TOKEN=${API_TOKEN}"
+  } >> "${ROOT_DIR}/.env"
+
   echo ""
-  warn "CODER_API_TOKEN (shown once — add it to .env now):"
+  info "CODER_API_TOKEN minted and written to .env (generated ${MINTED_AT})"
+  warn "Also copy it into coder-template-api-python's .env:"
   warn "  ${API_TOKEN}"
-  warn "Needed by: task coder-config (this repo) and coder-template-api-python's .env"
 else
-  info "CODER_API_TOKEN already set in .env — skipping mint"
+  info "CODER_API_TOKEN in .env is still valid — skipping mint"
 fi
 
 echo ""
@@ -116,4 +136,4 @@ info "Coder URL (VPC-internal): ${CODER_ACCESS_URL}"
 info "Local access:             ${LOCAL_CODER_URL}"
 info "Admin user:               ${CODER_ADMIN_EMAIL}"
 info "Port-forward left running — stop with: task port-forward-stop"
-info "Next: add CODER_API_TOKEN to .env (if just minted), then run: task coder-config"
+info "Next: task coder-config"

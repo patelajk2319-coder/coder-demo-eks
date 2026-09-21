@@ -84,7 +84,7 @@ tasks:
       - bash scripts/20_deploy_coder.sh
 
   init:
-    desc: Initialise Coder — create admin user, write credentials, mint an API token for coder-config
+    desc: Initialise Coder — create admin user, write credentials, mint an API token into .env for coder-config
     cmds:
       - bash scripts/30_init_coder.sh
 
@@ -113,12 +113,13 @@ tasks:
       - kubectl get svc -n {{.CODER_NS}}
 
   port-forward:
-    aliases: [fwd]
+    aliases: [fwd, fwd-start]
     desc: Ensure Coder is port-forwarded to localhost:8080 (left running; task init also starts this)
     cmds:
       - bash scripts/tools/port_forward.sh
 
   port-forward-stop:
+    aliases: [fwd-stop]
     desc: Stop the persistent Coder port-forward
     cmds:
       - bash scripts/tools/port_forward.sh stop

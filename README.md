@@ -31,12 +31,13 @@ clear which is which:
   / `GITHUB_OAUTH_CLIENT_SECRET` (from a GitHub OAuth App — see the comment above them),
   plus a couple that already have sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`).
 - **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
-  `task coder`) and `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
-  `task infra`).
-- **Minted, but you paste it in**: `CODER_API_TOKEN` — `task init` mints this and
-  prints it once (Coder never shows it again); add it to `.env` before running
-  `task coder-config`, and hand the same value to `coder-template-api-python`'s
-  `.env` too.
+  `task coder`), `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
+  `task infra`), and `CODER_API_TOKEN` (written by `task init`, which re-mints and
+  overwrites the token whenever the existing one no longer authenticates — e.g. after
+  a database reset — so it can't silently go stale; a `# CODER_API_TOKEN minted
+  <timestamp>` comment is written above it for reference). Still hand the same
+  `CODER_API_TOKEN` value to `coder-template-api-python`'s `.env` manually — that's a
+  separate file `task init` doesn't touch.
 
 External auth (`CODER_EXTERNAL_AUTH_*`) lets workspace templates authenticate git
 operations as each developer's own GitHub identity via `data.coder_external_auth`,
@@ -97,7 +98,6 @@ ANTHROPIC_API_KEY=<your-anthropic-key>
 ```bash
 task login         # Validate AWS credentials
 task up            # infra + coder + init in one go (or run the three separately, below)
-# add the printed CODER_API_TOKEN to .env, then:
 task coder-config  # Apply license (if licence.lic present) + provisioner keys
 ```
 
@@ -105,7 +105,7 @@ task coder-config  # Apply license (if licence.lic present) + provisioner keys
 ```bash
 task infra         # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
 task coder         # Coder Helm release
-task init          # Create admin user, write credentials, mint an API token
+task init          # Create admin user, write credentials, mint an API token into .env
 ```
 
 ### 4. Access Coder
@@ -138,7 +138,7 @@ task nuke
 | `task up` | Full deploy — `infra` + `coder` + `init` in one command |
 | `task infra` | Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons |
 | `task coder` | Deploy Coder Helm release to EKS |
-| `task init` | Create Coder admin user, write credentials, mint an API token for `coder-config` |
+| `task init` | Create Coder admin user, write credentials, mint an API token into `.env` for `coder-config` |
 | `task coder-config` | Apply Coder platform config (license, provisioner keys) via the `coderd` Terraform provider |
 | `task clean` | Reset Coder to clean state (keeps EKS + RDS) |
 | `task nuke` | Destroy all AWS infrastructure |
