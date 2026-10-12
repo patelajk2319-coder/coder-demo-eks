@@ -5,5 +5,5 @@ output "github_oauth_secret_arn" {
 
 output "coder_role_arn" {
   description = "IAM role ARN (IRSA) for the Coder service account — read access to Secrets Manager"
-  value       = aws_iam_role.coder.arn
+  value       = module.coder_irsa.arn
 }

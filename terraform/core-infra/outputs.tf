@@ -13,11 +13,6 @@ output "oidc_provider_arn" {
   value       = module.eks.oidc_provider_arn
 }
 
-output "oidc_provider_url" {
-  description = "URL of the cluster's OIDC issuer — needed by terraform/addons for IRSA role trust policies"
-  value       = module.eks.oidc_provider_url
-}
-
 output "rds_endpoint" {
   description = "Connection endpoint (hostname) of the RDS PostgreSQL instance"
   value       = module.rds.address

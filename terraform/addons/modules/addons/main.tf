@@ -1,51 +1,22 @@
 # ── AWS Load Balancer Controller ────────────────────────────────────────────────
-# Provisions and manages the internal NLB for Coder's service — the equivalent of
-# AKS's built-in cloud-provider annotation-based internal LoadBalancer support.
-# Not built into EKS, so it needs its own IAM role (IRSA) and Helm install.
+# Manages Coder's internal NLB — not built into EKS, needs its own IRSA role.
 
-data "aws_iam_policy_document" "alb_controller_assume" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+module "alb_controller_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-    principals {
-      type        = "Federated"
-      identifiers = [var.oidc_provider_arn]
-    }
+  name = "${var.cluster_name}-alb-controller"
 
-    condition {
-      test     = "StringEquals"
-      variable = "${var.oidc_provider_url}:sub"
-      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "${var.oidc_provider_url}:aud"
-      values   = ["sts.amazonaws.com"]
+  oidc_providers = {
+    main = {
+      provider_arn               = var.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
     }
   }
-}
 
-resource "aws_iam_role" "alb_controller" {
-  name               = "${var.cluster_name}-alb-controller"
-  assume_role_policy = data.aws_iam_policy_document.alb_controller_assume.json
-  tags               = var.tags
-}
-
-# Copied verbatim from upstream (kubernetes-sigs/aws-load-balancer-controller
-# docs/install/iam_policy.json) rather than hand-transcribed, to avoid
-# missing a statement.
-resource "aws_iam_policy" "alb_controller" {
-  name   = "${var.cluster_name}-alb-controller"
-  policy = file("${path.module}/alb_controller_policy.json")
+  attach_load_balancer_controller_policy = true
 
   tags = var.tags
-}
-
-resource "aws_iam_role_policy_attachment" "alb_controller" {
-  role       = aws_iam_role.alb_controller.name
-  policy_arn = aws_iam_policy.alb_controller.arn
 }
 
 resource "kubernetes_service_account" "alb_controller" {
@@ -54,7 +25,7 @@ resource "kubernetes_service_account" "alb_controller" {
     namespace = "kube-system"
 
     annotations = {
-      "eks.amazonaws.com/role-arn" = aws_iam_role.alb_controller.arn
+      "eks.amazonaws.com/role-arn" = module.alb_controller_irsa.arn
     }
 
     labels = {
@@ -95,16 +66,28 @@ resource "helm_release" "alb_controller" {
     value = kubernetes_service_account.alb_controller.metadata[0].name
   }
 
+  # Pin to the platform node pool, isolated from coderd — see
+  # core-infra's eks_managed_node_groups.
+  values = [
+    yamlencode({
+      nodeSelector = { "coder.com/node-pool" = "platform" }
+      tolerations = [
+        {
+          key      = "coder.com/node-pool"
+          operator = "Equal"
+          value    = "platform"
+          effect   = "NoSchedule"
+        }
+      ]
+    }),
+  ]
+
   wait    = true
   timeout = 300
-
-  depends_on = [aws_iam_role_policy_attachment.alb_controller]
 }
 
 # ── Secrets Store CSI Driver + AWS provider ────────────────────────────────────
-# Mounts Secrets Manager secrets into pods — the equivalent of AKS's built-in
-# Key Vault CSI driver. The IRSA role for reading specific secrets lives on the
-# *consuming* pod's service account (Coder's), not on this driver itself.
+# Mounts Secrets Manager secrets into pods; the IRSA role lives on the consumer (Coder's).
 
 resource "helm_release" "secrets_store_csi_driver" {
   name       = "secrets-store-csi-driver"
@@ -117,10 +100,8 @@ resource "helm_release" "secrets_store_csi_driver" {
     value = "true"
   }
 
-  # Required for the AWS provider: the CSIDriver object needs projected
-  # service-account tokens for these audiences so pods' IRSA identity can be
-  # exchanged for AWS credentials. The provider-aws chart's bundled copy of
-  # this driver sets this by default; our standalone install needs it explicit.
+  # Needed so pods' IRSA identity can be exchanged for AWS credentials —
+  # the bundled copy of this driver sets it by default, our standalone one doesn't.
   set {
     name  = "tokenRequests[0].audience"
     value = "sts.amazonaws.com"
@@ -129,6 +110,13 @@ resource "helm_release" "secrets_store_csi_driver" {
   set {
     name  = "tokenRequests[1].audience"
     value = "pods.eks.amazonaws.com"
+  }
+
+  # Only Coder's own pod mounts a secret via this driver — pin it there.
+  # No explicit toleration: this chart's default already matches any taint.
+  set {
+    name  = "linux.nodeSelector.coder\\.com/node-pool"
+    value = "coderd"
   }
 
   wait    = true
@@ -141,14 +129,28 @@ resource "helm_release" "secrets_store_csi_driver_provider_aws" {
   chart      = "secrets-store-csi-driver-provider-aws"
   namespace  = "kube-system"
 
-  # This chart bundles its own copy of secrets-store-csi-driver as a subchart
-  # (defaulting to fullnameOverride: secrets-store-csi-driver), which collides
-  # with the standalone driver release above. Disable the bundled copy since
-  # we already install the driver ourselves.
+  # This chart bundles its own copy of the driver, which collides with the
+  # standalone release above — disable it.
   set {
     name  = "secrets-store-csi-driver.install"
     value = "false"
   }
+
+  # Same pool as the driver above; this chart has no default toleration, so
+  # one has to be set explicitly.
+  values = [
+    yamlencode({
+      nodeSelector = { "coder.com/node-pool" = "coderd" }
+      tolerations = [
+        {
+          key      = "coder.com/node-pool"
+          operator = "Equal"
+          value    = "coderd"
+          effect   = "NoSchedule"
+        }
+      ]
+    }),
+  ]
 
   wait    = true
   timeout = 300
@@ -157,53 +159,44 @@ resource "helm_release" "secrets_store_csi_driver_provider_aws" {
 }
 
 # ── EBS CSI Driver ──────────────────────────────────────────────────────────────
-# Provides dynamic PersistentVolume provisioning for workspace home directories —
-# not built into EKS. Installed as an official EKS addon (not Helm) since AWS
-# ships and versions it directly through the EKS API, same as the vpc-cni/
-# coredns/kube-proxy addons EKS already manages for the cluster itself.
+# Installed as an EKS addon (not Helm) — AWS ships and versions it directly.
 
-data "aws_iam_policy_document" "ebs_csi_assume" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+module "ebs_csi_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-    principals {
-      type        = "Federated"
-      identifiers = [var.oidc_provider_arn]
-    }
+  name = "${var.cluster_name}-ebs-csi"
 
-    condition {
-      test     = "StringEquals"
-      variable = "${var.oidc_provider_url}:sub"
-      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "${var.oidc_provider_url}:aud"
-      values   = ["sts.amazonaws.com"]
+  oidc_providers = {
+    main = {
+      provider_arn               = var.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
     }
   }
-}
 
-resource "aws_iam_role" "ebs_csi" {
-  name               = "${var.cluster_name}-ebs-csi"
-  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume.json
-  tags               = var.tags
-}
+  attach_ebs_csi_policy = true
 
-resource "aws_iam_role_policy_attachment" "ebs_csi" {
-  role       = aws_iam_role.ebs_csi.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  tags = var.tags
 }
 
 resource "aws_eks_addon" "ebs_csi" {
   cluster_name             = var.cluster_name
   addon_name               = "aws-ebs-csi-driver"
-  service_account_role_arn = aws_iam_role.ebs_csi.arn
+  service_account_role_arn = module.ebs_csi_irsa.arn
   tags                     = var.tags
 
-  depends_on = [aws_iam_role_policy_attachment.ebs_csi]
+  # Only the controller Deployment is pinned — the node plugin (a DaemonSet)
+  # must keep running everywhere, workspaces pool included.
+  configuration_values = jsonencode({
+    controller = {
+      nodeSelector = { "coder.com/node-pool" = "platform" }
+      tolerations = [
+        { key = "CriticalAddonsOnly", operator = "Exists" },
+        { operator = "Exists", effect = "NoExecute", tolerationSeconds = 300 },
+        { key = "coder.com/node-pool", operator = "Equal", value = "platform", effect = "NoSchedule" },
+      ]
+    }
+  })
 }
 
 # gp3 over the cluster's pre-existing gp2 default — cheaper and higher baseline

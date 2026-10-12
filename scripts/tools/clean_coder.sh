@@ -3,11 +3,11 @@
 # release and terraform/coder state, drops and recreates the database, clears
 # the access URL from .env. Doesn't touch workspace namespaces (coder-ws-*) —
 # run your workspaces repo's clean task first if you have one.
-# After this: task coder && task init && task coder-config
+# After this: task coder && task init (init now chains into coder-config)
 #
 # The DB drop below also wipes everything terraform/coderd manages (license,
 # provisioner keys) — they're DB-backed Coder platform resources, same as
-# templates/workspaces. task coder-config mints a *new* provisioner key on
+# templates/workspaces. coder-config mints a *new* provisioner key on
 # re-apply, so coder-team-cluster-demo's .env needs updating with it too.
 
 set -euo pipefail
@@ -79,11 +79,14 @@ DB_NAME="${RDS_DATABASE:-coder}"
 PG_HOST="${RDS_ENDPOINT}"
 
 # kubectl exec into a temporary psql pod so we can reach the private RDS instance
+# --overrides adds a toleration for both tainted node pools — this pod
+# doesn't care which one it lands on, it just needs anywhere to run.
 kubectl run pg-reset \
   --image=postgres:16 \
   --restart=Never \
   --namespace=default \
   --env="PGPASSWORD=${TF_VAR_postgres_admin_password}" \
+  --overrides='{"spec":{"tolerations":[{"key":"coder.com/node-pool","operator":"Exists","effect":"NoSchedule"}]}}' \
   --command -- sleep 120 &>/dev/null
 
 kubectl wait pod/pg-reset --for=condition=Ready --timeout=60s --namespace=default &>/dev/null
@@ -112,5 +115,5 @@ info "Access URL cleared, coder-init.json removed"
 
 echo ""
 info "Coder has been reset — EKS and RDS are still running"
-info "Re-deploy with: task coder && task init && task coder-config"
-info "task coder-config will mint a NEW provisioner key — update coder-team-cluster-demo/.env with it"
+info "Re-deploy with: task coder && task init"
+info "task init will mint a NEW provisioner key — update coder-team-cluster-demo/.env with it"

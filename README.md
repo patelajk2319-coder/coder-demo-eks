@@ -60,12 +60,32 @@ that actually need kubernetes/helm) and `coder` (the Helm release). The fourth,
 `coderd` Terraform provider), not AWS or Kubernetes, so it only needs `CODER_API_TOKEN`
 and a reachable Coder URL, not any other directory's state.
 
+## Node Pools
+
+Three dedicated EKS node pools (`terraform/core-infra/main.tf`), each labeled
+*and* tainted so nothing lands there without a matching `nodeSelector` +
+toleration:
+
+| Pool | Runs | Instance type |
+|------|------|----------------|
+| `coderd` | Coder server only (2 replicas, 1 vCPU/2Gi request, 2 vCPU/4Gi limit each — requests below limits so a rollout's surge pod has room) | `m6i.xlarge` |
+| `platform` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
+| `workspaces` | Not created yet — deferred | — |
+
+Per [Coder's own guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
+taken a step further: `coderd` is isolated from platform infrastructure too,
+not just from workspaces, so a misbehaving controller can't starve the Coder
+server. Don't confuse this `coderd` *node pool* with the `terraform/coderd`
+*Terraform stack* below — same name, unrelated things (one's a set of EC2
+nodes, the other manages license/provisioner keys via the Coder API).
+
 ## Premium License (optional)
 
 If you have a Coder Premium license, drop the file at `licence.lic` in the repo
-root before running `task coder-config` (or re-run `task coder-config` any time
-afterwards — it's idempotent, and the Terraform diff will show the license as
-unchanged if nothing about it moved). `licence.lic` is gitignored (`*.lic`) and
+root before running `task init` (which applies it as part of platform config),
+or re-run `task coder-config` any time afterwards to pick up a change — it's
+idempotent, and the Terraform diff will show the license as unchanged if
+nothing about it moved. `licence.lic` is gitignored (`*.lic`) and
 must never be committed; if it's absent, the `coderd_license` resource is simply
 never created and Coder runs on the open-source feature set as normal.
 
@@ -95,16 +115,16 @@ TF_VAR_postgres_admin_password=<your-secure-password>
 
 ### 3. Deploy the Stack
 ```bash
-task login         # Validate AWS credentials
-task up            # infra + coder + init in one go (or run the three separately, below)
-task coder-config  # Apply license (if licence.lic present) + provisioner keys
+task login  # Validate AWS credentials
+task up     # infra + coder + init (including platform config) in one go
 ```
 
 `task up` is shorthand for:
 ```bash
-task infra         # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
-task coder         # Coder Helm release
-task init          # Create admin user, write credentials, mint an API token into .env
+task infra  # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
+task coder  # Coder Helm release
+task init   # Create admin user, mint an API token, then apply platform config
+            # (license, provisioner keys) via the coderd Terraform provider
 ```
 
 ### 4. Access Coder
@@ -122,7 +142,7 @@ Run `task info` to see the internal access URL, admin credentials, and cluster s
 ## Cleanup
 
 ```bash
-# Reset Coder (keeps EKS + RDS running — re-deploy with task coder && task init && task coder-config)
+# Reset Coder (keeps EKS + RDS running — re-deploy with task coder && task init)
 task clean
 
 # Destroy all AWS infrastructure including EKS and RDS
@@ -134,11 +154,11 @@ task nuke
 | Task | Description |
 |------|-------------|
 | `task login` | Validate AWS credentials |
-| `task up` | Full deploy — `infra` + `coder` + `init` in one command |
+| `task up` | Full deploy — `infra` + `coder` + `init` (incl. platform config) in one command |
 | `task infra` | Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons |
 | `task coder` | Deploy Coder Helm release to EKS |
-| `task init` | Create Coder admin user, write credentials, mint an API token into `.env` for `coder-config` |
-| `task coder-config` | Apply Coder platform config (license, provisioner keys) via the `coderd` Terraform provider |
+| `task init` | Create Coder admin user + API token, then apply platform config via `coder-config` |
+| `task coder-config` | Re-apply Coder platform config (license, provisioner keys) alone — e.g. after rotating `licence.lic` |
 | `task clean` | Reset Coder to clean state (keeps EKS + RDS) |
 | `task nuke` | Destroy all AWS infrastructure |
 | `task status` | Check Coder pod status |

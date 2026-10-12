@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.5.7"
 
   required_providers {
     kubernetes = {
@@ -27,10 +27,7 @@ provider "helm" {
   }
 }
 
-# Reads terraform/core-infra's outputs directly — the Terraform-native way to
-# bridge deliberately separate states. Nothing here is read from
-# terraform/addons (the ALB controller/CSI driver just need to be installed,
-# not read from — no data dependency, only an ordering one).
+# Nothing here is read from terraform/addons — ordering dependency only.
 data "terraform_remote_state" "core" {
   backend = "local"
   config = {

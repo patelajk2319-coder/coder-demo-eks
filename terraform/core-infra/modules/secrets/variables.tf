@@ -8,11 +8,6 @@ variable "oidc_provider_arn" {
   type        = string
 }
 
-variable "oidc_provider_url" {
-  description = "URL of the cluster's OIDC issuer, without the https:// prefix"
-  type        = string
-}
-
 variable "postgres_admin_password" {
   description = "PostgreSQL admin password to store in Secrets Manager"
   type        = string

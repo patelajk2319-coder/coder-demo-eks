@@ -7,6 +7,18 @@ workspaces — that belongs in a separate workspaces/templates repo. RBAC grante
 here (e.g. the workspace-provisioner ClusterRole) is the platform's job since it's
 a cluster security boundary, but *what* gets provisioned with it is not.
 
+Node-pool scheduling follows the same split: this repo owns the `coder.com/node-pool`
+node labels and taints, each pool labeled *and* tainted so nothing lands on it
+without an explicit nodeSelector + toleration. Three pools — `coderd` (the Coder
+server only, isolated from everything else per https://coder.com/docs/admin/infrastructure/validated-architectures
+taken a step further), `platform` (ALB controller, EBS CSI controller, Secrets
+Store CSI driver, CoreDNS), and `workspaces` (deferred — not yet created). Per-node
+DaemonSets that must run everywhere regardless of pool (vpc-cni, kube-proxy, the EBS
+CSI node plugin) are untouched — they tolerate all taints by default. Once the
+`workspaces` pool exists and is tainted, template repos (e.g. coder-template-api-python)
+will need a matching `nodeSelector`/`tolerations` on their workspace resources to
+schedule onto it.
+
 ## Language
 US English throughout all documentation, comments, and output strings.
 
@@ -19,7 +31,8 @@ US English throughout all documentation, comments, and output strings.
 
 ## Terraform
 - Official providers only — never community forks (`hashicorp/aws`, `hashicorp/kubernetes`, `hashicorp/helm`, `hashicorp/tls`, `coder/coderd`)
-- Version constraints: `~>` for providers, `>= 1.5.0` for Terraform itself
+- Version constraints: `~>` for providers, `>= 1.5.7` for Terraform itself
+- Registry modules: prefer `terraform-aws-modules/*` (the canonical AWS community org — unverified, but official-providers-only under the hood, pinned with `~>`) and `aws-ia/*` (AWS's own GitHub org) over hand-rolled resources for generic infrastructure (VPC, EKS, IAM-for-IRSA). Write custom resources only for what's genuinely project-specific (RDS stays hand-rolled here — nothing in this repo uses the parameter-group/replica/Blue-Green surface a module would add). Don't adopt a module that forces a provider major-version bump for a marginal line-count win (this is why `aws-ia/eks-blueprints-addons` was rejected — it needs `hashicorp/helm ~> 3.0`).
 - No heredocs for Kubernetes manifests — use `yamlencode()`
 - One module per logical concern; no monolithic main.tf files
 - All sensitive outputs marked `sensitive = true`
@@ -41,11 +54,14 @@ US English throughout all documentation, comments, and output strings.
 
 ## Deployment Workflow
 Strict ordering must be followed:
-1. `task login`         — validate AWS credentials
-2. `task infra`         — deploy EKS cluster + RDS PostgreSQL + cluster add-ons via Terraform
-3. `task coder`         — deploy Coder to EKS via Terraform (Helm release)
-4. `task init`          — create admin user + write credentials to coder-init.json + mint an API token
-5. `task coder-config`  — apply platform config (license, provisioner keys) via the coderd Terraform provider
+1. `task login` — validate AWS credentials
+2. `task infra` — deploy EKS cluster + RDS PostgreSQL + cluster add-ons via Terraform
+3. `task coder` — deploy Coder to EKS via Terraform (Helm release)
+4. `task init`  — create admin user + mint an API token, then apply platform config
+   (license, provisioner keys) via the coderd Terraform provider. These are two
+   scripts, not one: the coderd provider needs the token to configure itself, so
+   bootstrap (imperative) and platform config (declarative) can't be a single
+   Terraform apply. `task coder-config` re-runs just the second half, standalone.
 
 ## Governance Notes (for interview context)
 - LLM API keys are stored in AWS Secrets Manager, read into the `coder` namespace
