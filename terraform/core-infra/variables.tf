@@ -29,27 +29,33 @@ variable "kubernetes_version" {
 }
 
 variable "node_instance_type" {
-  description = "EC2 instance type for the EKS managed node group"
+  description = "EC2 instance type for the coderd node pool"
   type        = string
   default     = "m6i.xlarge"
 }
 
 variable "node_desired_count" {
-  description = "Desired node count for the system node group"
+  description = "Desired node count for the coderd node pool"
   type        = number
   default     = 2
 }
 
 variable "node_min_count" {
-  description = "Minimum node count for the system node group autoscaler"
+  description = "Minimum node count for the coderd node pool's autoscaler"
   type        = number
   default     = 1
 }
 
 variable "node_max_count" {
-  description = "Maximum node count for the system node group autoscaler"
+  description = "Maximum node count for the coderd node pool's autoscaler"
   type        = number
   default     = 3
+}
+
+variable "platform_node_instance_type" {
+  description = "EC2 instance type for the platform node pool (ALB controller, CSI drivers, CoreDNS) — smaller than coderd's, since these are lightweight controllers"
+  type        = string
+  default     = "m6i.large"
 }
 
 variable "log_retention_days" {
@@ -80,12 +86,6 @@ variable "postgres_storage_gb" {
   description = "Allocated storage in GB for the RDS instance"
   type        = number
   default     = 32
-}
-
-variable "anthropic_api_key" {
-  description = "Anthropic API key — stored in Secrets Manager, never passed to Coder Terraform"
-  type        = string
-  sensitive   = true
 }
 
 variable "github_oauth_client_secret" {

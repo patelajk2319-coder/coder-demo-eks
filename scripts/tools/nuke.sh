@@ -24,7 +24,6 @@ set -a
 source "${ROOT_DIR}/.env"
 set +a
 
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in .env}"
 : "${GITHUB_OAUTH_CLIENT_SECRET:?GITHUB_OAUTH_CLIENT_SECRET must be set in .env}"
 
 # Destroy platform config (license, provisioner keys) first, while the
@@ -66,7 +65,6 @@ fi
 
 section "Destroying VPC, EKS, RDS, and Secrets Manager..."
 terraform -chdir="${CORE_TF_DIR}" destroy -auto-approve \
-  -var="anthropic_api_key=${ANTHROPIC_API_KEY}" \
   -var="github_oauth_client_secret=${GITHUB_OAUTH_CLIENT_SECRET}" \
   || warn "Terraform destroy failed — some resources may require manual cleanup in the AWS console"
 

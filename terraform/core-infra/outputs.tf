@@ -13,11 +13,6 @@ output "oidc_provider_arn" {
   value       = module.eks.oidc_provider_arn
 }
 
-output "oidc_provider_url" {
-  description = "URL of the cluster's OIDC issuer — needed by terraform/addons for IRSA role trust policies"
-  value       = module.eks.oidc_provider_url
-}
-
 output "rds_endpoint" {
   description = "Connection endpoint (hostname) of the RDS PostgreSQL instance"
   value       = module.rds.address
@@ -31,11 +26,6 @@ output "rds_database_name" {
 output "rds_admin_username" {
   description = "PostgreSQL administrator username — read by terraform/coder to build the connection URL"
   value       = module.rds.admin_username
-}
-
-output "anthropic_secret_arn" {
-  description = "ARN of the Secrets Manager secret holding the Anthropic API key"
-  value       = module.secrets.anthropic_secret_arn
 }
 
 output "github_oauth_secret_arn" {

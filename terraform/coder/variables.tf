@@ -6,7 +6,7 @@ variable "coder_access_url" {
 variable "coder_version" {
   description = "Coder Helm chart version to deploy"
   type        = string
-  default     = "2.33.6"
+  default     = "2.36.5"
 }
 
 variable "postgres_admin_password" {

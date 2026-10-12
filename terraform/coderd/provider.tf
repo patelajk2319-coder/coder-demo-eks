@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.5.7"
 
   required_providers {
     coderd = {
@@ -9,10 +9,8 @@ terraform {
   }
 }
 
-# CODER_ACCESS_URL is the internal NLB hostname — unreachable from the deploy
-# machine. var.coder_url is a localhost port-forward address instead (see
-# scripts/40_deploy_coderd.sh), same constraint every other script here works
-# around.
+# CODER_ACCESS_URL is unreachable from the deploy machine — var.coder_url is
+# a localhost port-forward address instead (see scripts/40_deploy_coderd.sh).
 provider "coderd" {
   url   = var.coder_url
   token = var.coder_api_token

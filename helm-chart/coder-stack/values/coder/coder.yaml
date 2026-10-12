@@ -10,12 +10,18 @@ coder:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
 
-  replicaCount: 1
+  # Coder's "Medium" tier (1-100 devs): 4 vCPU / 8Gi total, 2-3 replicas —
+  # https://coder.com/explore/how-coder-works/control-plane. Split across 2.
+  replicaCount: 2
 
+  # Requests below limits (not Guaranteed QoS) so a rollout's extra surge
+  # pod fits on the coderd pool — v2.36.5's chart has no strategy/maxSurge
+  # setting, so this is the only way to give Kubernetes' default 25% surge
+  # room to schedule without a 3rd node.
   resources:
     requests:
-      cpu: 250m
-      memory: 512Mi
+      cpu: "1"
+      memory: 2Gi
     limits:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: "2"
+      memory: 4Gi

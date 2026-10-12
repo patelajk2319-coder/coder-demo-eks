@@ -1,20 +1,16 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.5.7" # terraform-aws-modules/eks//v21 requires >= 1.5.7
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "~> 4.0"
+      version = "~> 6.0" # terraform-aws-modules/vpc//v6 and /eks//v21 require aws >= 6.28/6.59
     }
   }
+  # tls/time/null/cloudinit come in implicitly via terraform-aws-modules/eks.
 }
 
-# Auth is sourced from the standard AWS credential chain (~/.aws/config,
-# ~/.aws/credentials, or AWS_PROFILE) — set via .env and exported by the deploy script.
+# Auth comes from the standard AWS credential chain, set via .env.
 provider "aws" {
   region = local.aws_region
 }

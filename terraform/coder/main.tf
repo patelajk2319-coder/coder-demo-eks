@@ -19,8 +19,7 @@ resource "kubernetes_namespace" "coder" {
 }
 
 # ── Service account annotated with the IRSA role ───────────────────────────────
-# The Coder Helm chart creates its own service account; we patch it post-install
-# via a separate resource so the annotation survives chart upgrades.
+# Patched post-install so the annotation survives chart upgrades.
 
 resource "kubernetes_annotations" "coder_sa" {
   api_version = "v1"
@@ -37,11 +36,9 @@ resource "kubernetes_annotations" "coder_sa" {
 }
 
 # ── Cluster-scoped RBAC for workspace provisioning ─────────────────────────────
-# The chart's default Role only covers pods/PVCs/deployments inside the coder
-# namespace. Workspace templates provision a namespace per workspace
-# (coder-ws-<owner>-<workspace>), so the coder service account needs these
-# cluster-wide.
 
+# The chart's default Role is namespace-scoped; templates provision one
+# namespace per workspace, so this needs to be cluster-wide.
 resource "kubernetes_cluster_role" "coder_workspace_provisioner" {
   metadata {
     name = "coder-workspace-provisioner"
@@ -95,8 +92,6 @@ resource "kubernetes_manifest" "secret_provider_class" {
       parameters = {
         region = local.aws_region
         objects = join("", [
-          "- objectName: \"${data.terraform_remote_state.core.outputs.anthropic_secret_arn}\"\n",
-          "  objectType: \"secretsmanager\"\n",
           "- objectName: \"${data.terraform_remote_state.core.outputs.github_oauth_secret_arn}\"\n",
           "  objectType: \"secretsmanager\"\n",
         ])
@@ -107,10 +102,6 @@ resource "kubernetes_manifest" "secret_provider_class" {
           secretName = "coder-secrets"
           type       = "Opaque"
           data = [
-            {
-              objectName = data.terraform_remote_state.core.outputs.anthropic_secret_arn
-              key        = "CODER_AIBRIDGE_ANTHROPIC_KEY"
-            },
             {
               objectName = data.terraform_remote_state.core.outputs.github_oauth_secret_arn
               key        = "CODER_EXTERNAL_AUTH_0_CLIENT_SECRET"
@@ -137,6 +128,21 @@ resource "helm_release" "coder" {
     file("${local.helm_values_root}/coder/coder.yaml"),
     yamlencode({
       coder = {
+        # Dedicated pool, isolated from platform add-ons too — see
+        # core-infra's eks_managed_node_groups.
+        nodeSelector = {
+          "coder.com/node-pool" = "coderd"
+        }
+        tolerations = [
+          {
+            key      = "coder.com/node-pool"
+            operator = "Equal"
+            value    = "coderd"
+            effect   = "NoSchedule"
+          }
+        ]
+        # No coder.strategy/maxSurge in v2.36.5's chart — rollout headroom
+        # comes from the resource requests in coder.yaml instead.
         serviceAccount = {
           annotations = {
             "eks.amazonaws.com/role-arn" = data.terraform_remote_state.core.outputs.coder_identity_role_arn
@@ -174,34 +180,20 @@ resource "helm_release" "coder" {
           { name = "CODER_MAX_ADMIN_TOKEN_LIFETIME", value = "876h" },
           { name = "CODER_DEFAULT_OAUTH_REFRESH_LIFETIME", value = "876h" },
           { name = "CODER_AIBRIDGE_ENABLED", value = "true" },
-          {
-            name = "CODER_AIBRIDGE_ANTHROPIC_KEY"
-            valueFrom = {
-              secretKeyRef = {
-                name = "coder-secrets"
-                key  = "CODER_AIBRIDGE_ANTHROPIC_KEY"
-              }
-            }
-          },
-          # External auth — lets workspace templates use data.coder_external_auth
-          # instead of a shared PAT template variable. Each developer authorizes
-          # their own GitHub identity once via the dashboard.
-          #
-          # Uses GitHub's device flow, not the browser-redirect flow: the normal
-          # flow's OAuth callback is built from CODER_ACCESS_URL, which is the
-          # internal NLB hostname — never reachable by a developer's browser (see
-          # README) — so GitHub would reject it as an unregistered redirect_uri.
-          # Device flow has no callback at all (the user enters a code at
-          # github.com/login/device instead), sidestepping the problem entirely.
+          # Authenticated via this pod's IRSA role, not a static API key.
+          { name = "CODER_AIBRIDGE_BEDROCK_REGION", value = "eu-west-1" },
+          # Needs CODER_VERSION >= 2.36.5, else Bedrock rejects claude-sonnet-5's
+          # "adaptive" thinking schema.
+          { name = "CODER_AIBRIDGE_BEDROCK_MODEL", value = "eu.anthropic.claude-sonnet-5" },
+          { name = "CODER_AIBRIDGE_BEDROCK_SMALL_FAST_MODEL", value = "eu.anthropic.claude-haiku-4-5-20251001-v1:0" },
+          # Device flow, not browser-redirect — the redirect callback is built
+          # from CODER_ACCESS_URL, which a developer's browser can't reach.
           { name = "CODER_EXTERNAL_AUTH_0_ID", value = "github" },
           { name = "CODER_EXTERNAL_AUTH_0_TYPE", value = "github" },
           { name = "CODER_EXTERNAL_AUTH_0_CLIENT_ID", value = var.github_oauth_client_id },
           { name = "CODER_EXTERNAL_AUTH_0_DEVICE_FLOW", value = "true" },
-          # Coder's default scopes for GitHub are "repo workflow", but its device
-          # code request encodes multiple scopes as repeated query params instead
-          # of one space-joined value — GitHub's device endpoint keeps only the
-          # last one, silently dropping "repo" (the one git clone/pull actually
-          # needs). Overriding to a single scope sidesteps the encoding bug.
+          # Single scope, not "repo workflow" — GitHub's device endpoint keeps
+          # only the last of multiple scopes, silently dropping "repo".
           { name = "CODER_EXTERNAL_AUTH_0_SCOPES", value = "repo" },
           {
             name = "CODER_EXTERNAL_AUTH_0_CLIENT_SECRET"

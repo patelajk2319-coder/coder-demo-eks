@@ -10,11 +10,12 @@
 # Usage:
 #   One-time deployment (or after an infra/Coder version bump):
 #     task login         - Validate AWS credentials
-#     task up            - infra + coder + init in one go (see below for the individual steps)
+#     task up            - infra + coder + init (+ coder-config) in one go
 #     task infra         - Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons
 #     task coder         - Deploy Coder to EKS
-#     task init          - Initialise Coder; also starts a persistent port-forward
-#     task coder-config  - Apply platform config (license, provisioner keys) via Terraform
+#     task init          - Initialise Coder, then apply platform config (license,
+#                          provisioner keys) via Terraform; starts a persistent port-forward
+#     task coder-config  - Re-apply platform config alone (e.g. after rotating licence.lic)
 #
 #   Utility tasks:
 #     task status            - Check Coder pod status
@@ -34,7 +35,7 @@
 #     task upgrade-coder V=2.34.6   - Upgrade Coder to a specific version
 #
 #   Secret rotation:
-#     task rotate-secret SECRET_NAME=anthropic-api-key SECRET_VALUE=sk-ant-... - Rotate a Secrets Manager secret and restart Coder
+#     task rotate-secret SECRET_NAME=github-oauth-client-secret SECRET_VALUE=... - Rotate a Secrets Manager secret and restart Coder
 #
 #   Cleanup:
 #     task clean        - Reset Coder to a clean state (keeps EKS + AWS managed services)
@@ -67,7 +68,7 @@ tasks:
   # ---------------------------------------------------------------------------
 
   up:
-    desc: Full deploy — infra, then Coder, then init (one command for the whole stack)
+    desc: Full deploy — infra, then Coder, then init (including platform config) in one command
     cmds:
       - task: infra
       - task: coder
@@ -84,12 +85,13 @@ tasks:
       - bash scripts/20_deploy_coder.sh
 
   init:
-    desc: Initialise Coder — create admin user, write credentials, mint an API token into .env for coder-config
+    desc: Initialise Coder (admin user, API token), then apply platform config via coder-config
     cmds:
       - bash scripts/30_init_coder.sh
+      - task: coder-config
 
   coder-config:
-    desc: Apply Coder platform config (license, provisioner keys) via the coderd Terraform provider
+    desc: Apply Coder platform config (license, provisioner keys) via the coderd Terraform provider — also runs as part of task init, but safe to re-run alone (e.g. after rotating licence.lic)
     cmds:
       - bash scripts/40_deploy_coderd.sh
 
