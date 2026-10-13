@@ -61,9 +61,11 @@ toleration:
 | `system` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
 | `workspaces` | Not created yet — deferred | — |
 
-Per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
-taken a step further: `coderd` is isolated from infrastructure too, not just
-workspaces.
+Follows [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures):
+a static, dedicated node group for `coderd`, separate from workspaces. The
+`system` pool is an additional hardening measure on top of that guidance —
+infrastructure controllers get their own pool too, so a misbehaving one can't
+starve `coderd`.
 
 ## Premium License (optional)
 
