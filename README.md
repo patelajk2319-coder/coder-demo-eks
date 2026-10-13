@@ -18,11 +18,16 @@ brew install terraform awscli kubectl jq go-task coder shellcheck
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in the values it marks as required
-(admin/DB passwords, a GitHub OAuth App's client ID/secret for external auth).
-Everything else already has a sensible default or is written automatically by
-the deploy scripts (`CODER_ACCESS_URL`, `EKS_CLUSTER_NAME`, `CODER_API_TOKEN`,
-etc.) — leave those blank.
+Copy `.env.example` to `.env`.
+
+**You fill in:**
+- `AWS_PROFILE` — your AWS CLI profile
+- `CODER_ADMIN_EMAIL` / `CODER_ADMIN_PASSWORD` — Coder admin login (email defaults to `admin@coder.demo`)
+- `TF_VAR_postgres_admin_password` — RDS admin password
+- `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` — from a GitHub OAuth App (see below)
+
+**Written by the deploy scripts — leave blank:** `CODER_ACCESS_URL`, `CODER_API_TOKEN`,
+`EKS_CLUSTER_NAME`, `RDS_ENDPOINT`, `RDS_DATABASE`, `RDS_ADMIN_USERNAME`.
 
 Region is fixed to `eu-west-1` in Terraform, not a variable — your
 `AWS_PROFILE` must resolve to that region.
@@ -44,7 +49,8 @@ toleration:
 | `workspaces` | Not created yet — deferred | — |
 
 Per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
-
+taken a step further: `coderd` is isolated from infrastructure too, not just
+workspaces.
 
 ## Premium License (optional)
 
@@ -90,7 +96,8 @@ Coder's LoadBalancer is internal-only (VPC-private) — nothing about this stack
 task port-forward   # forwards localhost:8080 -> Coder, foreground (Ctrl-C to stop)
 ```
 
-Then open `http://localhost:8080` in a browser.
+Then open `http://localhost:8080` in a browser and log in with
+`CODER_ADMIN_EMAIL` / `CODER_ADMIN_PASSWORD` from your `.env`.
 
 Run `task info` to see the internal access URL, admin credentials, and cluster state.
 
