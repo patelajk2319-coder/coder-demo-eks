@@ -51,15 +51,15 @@ GitHub OAuth App's settings page or authorization will fail.
 
 ## Node Pools
 
-Three dedicated EKS node pools (`terraform/core-infra/main.tf`), each labeled
+Two dedicated EKS node pools (`terraform/core-infra/main.tf`), each labeled
 *and* tainted so nothing lands there without a matching `nodeSelector` +
-toleration:
+toleration. Workspace pods aren't scheduled on this cluster at all — they
+run on a separate, team-owned cluster.
 
 | Pool | Function | Runs | Instance type |
 |------|----------|------|----------------|
 | `coderd` | Static control plane, per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures) | Coder server only (2 replicas, 1 vCPU/2Gi request, 2 vCPU/4Gi limit each — requests below limits so a rollout's surge pod has room) | `m6i.xlarge` |
 | `system` | Everything the EKS cluster itself needs to run, kept separate so a misbehaving controller can't starve `coderd` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
-| `workspaces` | Workspace pods, isolated from both control plane and infrastructure | Not created yet — deferred | — |
 
 ## Premium License (optional)
 
