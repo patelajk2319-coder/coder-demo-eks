@@ -63,7 +63,17 @@ kubectl get nodes
 section "Initialising Terraform (terraform/addons)..."
 terraform -chdir="${ADDONS_TF_DIR}" init -upgrade
 
-section "Deploying cluster add-ons (AWS Load Balancer Controller, Secrets Store CSI driver, Argo CD)..."
+# Two-pass apply: the AppProject/Application CRs below need Argo CD's own
+# CRDs (installed by its Helm release) to already exist, or Terraform's
+# plan-time GVK validation fails before anything is applied at all — same
+# chicken-and-egg shape as Coder's own two-pass apply in 20_deploy_coder.sh.
+section "Deploying Argo CD (installs its CRDs first)..."
+terraform -chdir="${ADDONS_TF_DIR}" apply \
+  -target=module.addons.helm_release.argocd \
+  -var="argocd_github_token=${ARGOCD_GITHUB_TOKEN}" \
+  -auto-approve
+
+section "Deploying cluster add-ons (AWS Load Balancer Controller, Secrets Store CSI driver, Argo CD's bootstrap Application)..."
 terraform -chdir="${ADDONS_TF_DIR}" apply \
   -var="argocd_github_token=${ARGOCD_GITHUB_TOKEN}" \
   -auto-approve
