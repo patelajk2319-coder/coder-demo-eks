@@ -8,16 +8,6 @@ variable "oidc_provider_arn" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "VPC ID the cluster runs in"
-  type        = string
-}
-
-variable "region" {
-  description = "AWS region"
-  type        = string
-}
-
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
