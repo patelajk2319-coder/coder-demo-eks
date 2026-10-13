@@ -35,7 +35,7 @@ Copy `.env.example` to `.env`.
 
 | Variable Name | Description |
 |----------------|-------------|
-| `CODER_ACCESS_URL` | Internal NLB hostname Coder is reachable at — written by `task coder` |
+| `CODER_ACCESS_URL` | Fixed internal DNS name Coder is reachable at — written by `task coder` |
 | `CODER_API_TOKEN` | API token for the `coderd` Terraform provider — written by `task init`, re-minted if the old one stops authenticating |
 | `EKS_CLUSTER_NAME` | The EKS cluster's name — written by `task infra` |
 | `RDS_ENDPOINT` | The RDS instance's connection endpoint — written by `task infra` |
@@ -59,7 +59,14 @@ run on a separate, team-owned cluster.
 | Pool | Function | Runs | Instance type |
 |------|----------|------|----------------|
 | `coderd` | Static control plane, per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures) | Coder server only (2 replicas, 1 vCPU/2Gi request, 2 vCPU/4Gi limit each — requests below limits so a rollout's surge pod has room) | `m6i.xlarge` |
-| `system` | Everything the EKS cluster itself needs to run, kept separate so a misbehaving controller can't starve `coderd` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
+| `system` | Everything the EKS cluster itself needs to run, kept separate so a misbehaving controller can't starve `coderd` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver, external-dns, Argo CD | `m6i.large` |
+
+## GitOps
+
+Cluster add-ons and Coder's own Helm release are managed by Argo CD, reconciled
+from `gitops/` (`task argocd` to reach its dashboard). Terraform bootstraps Argo
+CD itself, AWS infra, and the handful of values Argo's static git source can't
+compute (IRSA identities, the Postgres connection URL).
 
 ## Premium License (optional)
 
@@ -127,7 +134,7 @@ task nuke
 | `task login` | Validate AWS credentials |
 | `task up` | Full deploy — `infra` + `coder` + `init` (incl. platform config) in one command |
 | `task infra` | Deploy EKS + RDS PostgreSQL + VPC + cluster add-ons |
-| `task coder` | Deploy Coder Helm release to EKS |
+| `task coder` | Apply Coder's Terraform prerequisites, then wait for Argo CD to sync the Helm release |
 | `task init` | Create Coder admin user + API token, then apply platform config via `coder-config` |
 | `task coder-config` | Re-apply Coder platform config (license, provisioner keys) alone — e.g. after rotating `licence.lic` |
 | `task provisioner-key` | Mint/fetch team-demo's provisioner key alone |
@@ -138,6 +145,8 @@ task nuke
 | `task ports` | Show Coder service and internal NLB hostname |
 | `task port-forward` | Forward Coder to localhost:8080 for browser/CLI access |
 | `task port-forward-stop` | Stop the persistent port-forward |
+| `task argocd` | Port-forward Argo CD to localhost:8443 |
+| `task argocd-stop` | Stop the persistent Argo CD port-forward |
 | `task nodes` | List EKS nodes |
 | `task logs` | Stream Coder control plane logs |
 | `task info` | Display connection info and credentials |

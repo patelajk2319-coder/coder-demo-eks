@@ -52,11 +52,24 @@ US English throughout all documentation, comments, and output strings.
 - Deployment order: `login` → `infra` → `coder` → `init`
 - Cleanup order: `clean` (keep EKS running) or `nuke` (destroy everything)
 
+## GitOps
+Argo CD (bootstrapped once by Terraform, `terraform/addons/modules/addons/argocd.tf`)
+reconciles everything in-cluster from `gitops/` — the add-ons stack and Coder's own
+Helm release, both with `selfHeal: true`. Terraform keeps owning AWS infra, Argo CD's
+own install, and the handful of values only Terraform can compute that Argo's static
+git source can't (IRSA-annotated ServiceAccounts, pre-created so charts never create
+their own; the `coder-config` ConfigMap for the Postgres URL/OAuth client ID). Raw
+manifests that back an Argo CD `Application` (e.g. `manifests/coder/`) live outside
+`gitops/` — the root app's own recursion over `gitops/` would otherwise adopt them
+directly and fight the owning Application for the same object.
+
 ## Deployment Workflow
 Strict ordering must be followed:
 1. `task login` — validate AWS credentials
-2. `task infra` — deploy EKS cluster + RDS PostgreSQL + cluster add-ons via Terraform
-3. `task coder` — deploy Coder to EKS via Terraform (Helm release)
+2. `task infra` — deploy EKS cluster + RDS PostgreSQL + cluster add-ons via Terraform,
+   bootstrapping Argo CD as part of the add-ons apply
+3. `task coder` — apply Coder's Terraform prerequisites, then wait for Argo CD's
+   `coder` Application to sync the actual Helm release
 4. `task init`  — create admin user + mint an API token, then apply platform config
    (license, provisioner keys) via the coderd Terraform provider. These are two
    scripts, not one: the coderd provider needs the token to configure itself, so
@@ -75,6 +88,7 @@ Strict ordering must be followed:
 - Coder's service LoadBalancer is internal-only (VPC-private, via the AWS Load
   Balancer Controller) — never expose it publicly
 - Access from outside the VPC goes through `task port-forward` / `scripts/lib/port_forward.sh`
-- `CODER_ACCESS_URL` is the internal NLB hostname, advertised to workspace agents
-  — scripts outside the cluster must use the local port-forward, not this URL directly
+- `CODER_ACCESS_URL` is a fixed internal DNS name (external-dns + a private Route53
+  zone), advertised to workspace agents — scripts outside the cluster must use the
+  local port-forward, not this URL directly
 - The EKS API server itself stays public so `kubectl`/`helm`/Terraform work from the deploy machine; cluster access is IAM-native (EKS Access Entries), not the legacy aws-auth ConfigMap

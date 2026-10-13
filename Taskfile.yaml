@@ -81,7 +81,7 @@ tasks:
       - bash scripts/10_deploy_core_infra.sh
 
   coder:
-    desc: Deploy Coder to EKS via Terraform (Helm release)
+    desc: Deploy Coder's prerequisites via Terraform, then wait for Argo CD to sync the Helm release
     cmds:
       - bash scripts/20_deploy_coder.sh
 
@@ -206,7 +206,7 @@ tasks:
   # ---------------------------------------------------------------------------
 
   clean:
-    desc: Reset Coder to a clean state — removes Helm release, clears DB, keeps EKS and RDS running (run your workspaces repo's task clean first, if you have one)
+    desc: Reset Coder to a clean state — deletes the Argo CD-managed release, clears DB, keeps EKS and RDS running (run your workspaces repo's task clean first, if you have one)
     cmds:
       - bash scripts/tools/clean_coder.sh
 
