@@ -38,6 +38,8 @@ spec:
       kind: ValidatingWebhookConfiguration
     - group: networking.k8s.io
       kind: IngressClass
+    - group: elbv2.k8s.aws
+      kind: IngressClassParams
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
