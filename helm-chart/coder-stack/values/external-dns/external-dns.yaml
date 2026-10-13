@@ -1,0 +1,31 @@
+provider:
+  name: aws
+
+serviceAccount:
+  create: false
+  name: external-dns
+
+sources:
+  - service
+
+# Never delete records this release didn't create — a shared zone otherwise.
+policy: upsert-only
+txtOwnerId: coder-demo-eks
+
+domainFilters:
+  - coder-demo.internal
+
+extraArgs:
+  aws-zone-type: private
+
+env:
+  - name: AWS_DEFAULT_REGION
+    value: eu-west-1
+
+nodeSelector:
+  coder.com/node-pool: system
+tolerations:
+  - key: coder.com/node-pool
+    operator: Equal
+    value: system
+    effect: NoSchedule

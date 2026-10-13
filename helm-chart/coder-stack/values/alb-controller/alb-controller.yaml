@@ -1,0 +1,14 @@
+clusterName: coder-demo-eks
+region: eu-west-1
+
+serviceAccount:
+  create: false
+  name: aws-load-balancer-controller
+
+nodeSelector:
+  coder.com/node-pool: system
+tolerations:
+  - key: coder.com/node-pool
+    operator: Equal
+    value: system
+    effect: NoSchedule

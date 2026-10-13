@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+spec:
+  project: platform
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns
+      chart: external-dns
+      targetRevision: 1.23.0
+      helm:
+        valueFiles:
+          - $values/helm-chart/coder-stack/values/external-dns/external-dns.yaml
+    - repoURL: https://github.com/patelajk2319-coder/coder-demo-eks.git
+      targetRevision: gitops-migration
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy: {}

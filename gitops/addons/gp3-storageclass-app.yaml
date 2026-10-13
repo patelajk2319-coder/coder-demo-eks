@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gp3-storageclass
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/patelajk2319-coder/coder-demo-eks.git
+    targetRevision: gitops-migration
+    path: gitops/addons/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy: {}
