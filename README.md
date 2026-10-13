@@ -55,17 +55,11 @@ Three dedicated EKS node pools (`terraform/core-infra/main.tf`), each labeled
 *and* tainted so nothing lands there without a matching `nodeSelector` +
 toleration:
 
-| Pool | Runs | Instance type |
-|------|------|----------------|
-| `coderd` | Coder server only (2 replicas, 1 vCPU/2Gi request, 2 vCPU/4Gi limit each — requests below limits so a rollout's surge pod has room) | `m6i.xlarge` |
-| `system` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
-| `workspaces` | Not created yet — deferred | — |
-
-Follows [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures):
-a static, dedicated node group for `coderd`, separate from workspaces. The
-`system` pool is an additional hardening measure on top of that guidance —
-infrastructure controllers get their own pool too, so a misbehaving one can't
-starve `coderd`.
+| Pool | Function | Runs | Instance type |
+|------|----------|------|----------------|
+| `coderd` | Static control plane, per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures) | Coder server only (2 replicas, 1 vCPU/2Gi request, 2 vCPU/4Gi limit each — requests below limits so a rollout's surge pod has room) | `m6i.xlarge` |
+| `system` | Everything the EKS cluster itself needs to run, kept separate so a misbehaving controller can't starve `coderd` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
+| `workspaces` | Workspace pods, isolated from both control plane and infrastructure | Not created yet — deferred | — |
 
 ## Premium License (optional)
 
