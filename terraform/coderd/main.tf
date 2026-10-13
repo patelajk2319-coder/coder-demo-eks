@@ -14,7 +14,7 @@ resource "coderd_license" "this" {
 }
 
 # Concrete resource, not for_each — only one external provisioner exists
-# today (coder-team-cluster-demo). Add another when a second is onboarded.
+# today. Add another when a second team is onboarded.
 resource "coderd_provisioner_key" "team_demo" {
   name            = "team-demo"
   organization_id = data.coderd_organization.default.id

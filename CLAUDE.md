@@ -61,7 +61,8 @@ Strict ordering must be followed:
    (license, provisioner keys) via the coderd Terraform provider. These are two
    scripts, not one: the coderd provider needs the token to configure itself, so
    bootstrap (imperative) and platform config (declarative) can't be a single
-   Terraform apply. `task coder-config` re-runs just the second half, standalone.
+   Terraform apply. `task coder-config` re-runs just the second half, standalone;
+   `task provisioner-key` targets just the provisioner key within it.
 
 ## Governance Notes (for interview context)
 - LLM API keys are stored in AWS Secrets Manager, read into the `coder` namespace

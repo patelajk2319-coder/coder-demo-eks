@@ -16,6 +16,7 @@
 #     task init          - Initialise Coder, then apply platform config (license,
 #                          provisioner keys) via Terraform; starts a persistent port-forward
 #     task coder-config  - Re-apply platform config alone (e.g. after rotating licence.lic)
+#     task provisioner-key - Mint/fetch team-demo's provisioner key alone
 #
 #   Utility tasks:
 #     task status            - Check Coder pod status
@@ -94,6 +95,12 @@ tasks:
     desc: Apply Coder platform config (license, provisioner keys) via the coderd Terraform provider — also runs as part of task init, but safe to re-run alone (e.g. after rotating licence.lic)
     cmds:
       - bash scripts/40_deploy_coderd.sh
+
+  provisioner-key:
+    aliases: [key]
+    desc: Mint/fetch team-demo's provisioner key alone and print it
+    cmds:
+      - bash scripts/tools/provisioner_key.sh
 
   # ---------------------------------------------------------------------------
   # Status and Kubernetes Operations

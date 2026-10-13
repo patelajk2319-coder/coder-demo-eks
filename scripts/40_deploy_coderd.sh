@@ -43,8 +43,4 @@ terraform -chdir="${TF_DIR}" apply \
 
 echo ""
 info "Coder platform config applied"
-if terraform -chdir="${TF_DIR}" output -raw team_demo_provisioner_key &>/dev/null; then
-  echo ""
-  warn "team-demo provisioner key (copy into coder-team-cluster-demo/.env as CODER_PROVISIONER_KEY):"
-  warn "  $(terraform -chdir="${TF_DIR}" output -raw team_demo_provisioner_key)"
-fi
+info "Need the team-demo provisioner key? Run: task provisioner-key"

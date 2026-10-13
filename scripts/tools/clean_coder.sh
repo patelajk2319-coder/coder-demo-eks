@@ -8,7 +8,7 @@
 # The DB drop below also wipes everything terraform/coderd manages (license,
 # provisioner keys) — they're DB-backed Coder platform resources, same as
 # templates/workspaces. coder-config mints a *new* provisioner key on
-# re-apply, so coder-team-cluster-demo's .env needs updating with it too.
+# re-apply, so any external provisioner's .env needs updating with it too.
 
 set -euo pipefail
 
@@ -116,4 +116,4 @@ info "Access URL cleared, coder-init.json removed"
 echo ""
 info "Coder has been reset — EKS and RDS are still running"
 info "Re-deploy with: task coder && task init"
-info "task init will mint a NEW provisioner key — update coder-team-cluster-demo/.env with it"
+info "Then: task provisioner-key — update any external provisioner's .env with it"

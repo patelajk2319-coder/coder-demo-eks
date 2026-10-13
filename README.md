@@ -159,6 +159,7 @@ task nuke
 | `task coder` | Deploy Coder Helm release to EKS |
 | `task init` | Create Coder admin user + API token, then apply platform config via `coder-config` |
 | `task coder-config` | Re-apply Coder platform config (license, provisioner keys) alone — e.g. after rotating `licence.lic` |
+| `task provisioner-key` | Mint/fetch team-demo's provisioner key alone |
 | `task clean` | Reset Coder to clean state (keeps EKS + RDS) |
 | `task nuke` | Destroy all AWS infrastructure |
 | `task status` | Check Coder pod status |
