@@ -18,47 +18,18 @@ brew install terraform awscli kubectl jq go-task coder shellcheck
 
 ## Configuration
 
-All configuration lives in `.env`, copied from `.env.example`. `.env` is gitignored —
-it holds real credentials and must never be committed. `.env.example` mirrors `.env`
-exactly (same variable names) and is the only one of the two safe to commit.
+Copy `.env.example` to `.env` and fill in the values it marks as required
+(admin/DB passwords, a GitHub OAuth App's client ID/secret for external auth).
+Everything else already has a sensible default or is written automatically by
+the deploy scripts (`CODER_ACCESS_URL`, `EKS_CLUSTER_NAME`, `CODER_API_TOKEN`,
+etc.) — leave those blank.
 
-`.env.example` has two kinds of variables, and each is labelled with a comment so it's
-clear which is which:
+Region is fixed to `eu-west-1` in Terraform, not a variable — your
+`AWS_PROFILE` must resolve to that region.
 
-- **You fill these in**: `AWS_PROFILE`, `CODER_ADMIN_PASSWORD`,
-  `TF_VAR_postgres_admin_password`, `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET`
-  (from a GitHub OAuth App — see the comment above them), plus a couple that already have
-  sensible defaults (`CODER_ADMIN_EMAIL`, `CODER_VERSION`). AI Bridge needs no variable
-  here at all — it authenticates to Amazon Bedrock via the Coder pod's own IRSA role.
-- **The deploy scripts write these** — leave them blank: `CODER_ACCESS_URL` (written by
-  `task coder`), `EKS_CLUSTER_NAME` / `RDS_ENDPOINT` / `RDS_DATABASE` (written by
-  `task infra`), and `CODER_API_TOKEN` (written by `task init`, which re-mints and
-  overwrites the token whenever the existing one no longer authenticates — e.g. after
-  a database reset — so it can't silently go stale; a `# CODER_API_TOKEN minted
-  <timestamp>` comment is written above it for reference). Still hand the same
-  `CODER_API_TOKEN` value to `coder-template-api-python`'s `.env` manually — that's a
-  separate file `task init` doesn't touch.
-
-External auth (`CODER_EXTERNAL_AUTH_*`) lets workspace templates authenticate git
-operations as each developer's own GitHub identity via `data.coder_external_auth`,
-instead of a shared PAT baked into the template. It uses GitHub's device flow (a
-code entered at `github.com/login/device`), not a browser-redirect callback —
-required here because `CODER_ACCESS_URL` is the internal NLB hostname, which a
-developer's browser can never land back on after a redirect. Enable "Device Flow"
-on the GitHub OAuth App itself (its settings page, alongside the Client ID/Secret)
-or authorization will fail.
-
-There's no region variable — it's fixed to `eu-west-1` directly in Terraform (a
-single-region demo stack, not something meant to be reconfigured per-deploy). Your
-`AWS_PROFILE` needs to resolve to that region. Terraform state is also how three of
-the four `terraform/` directories talk to each other, via `terraform_remote_state`
-instead of scripts threading `-var` flags: `core-infra` (VPC, EKS, RDS, Secrets
-Manager — pure AWS, no kubernetes/helm needed) is read directly by both `addons`
-(the AWS Load Balancer Controller and Secrets Store CSI driver — the only things
-that actually need kubernetes/helm) and `coder` (the Helm release). The fourth,
-`coderd`, is independent of that chain — it talks to the Coder API itself (via the
-`coderd` Terraform provider), not AWS or Kubernetes, so it only needs `CODER_API_TOKEN`
-and a reachable Coder URL, not any other directory's state.
+GitHub external auth uses device flow (a code entered at
+`github.com/login/device`), not a redirect — enable "Device Flow" on the
+GitHub OAuth App's settings page or authorization will fail.
 
 ## Node Pools
 
@@ -72,22 +43,16 @@ toleration:
 | `system` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
 | `workspaces` | Not created yet — deferred | — |
 
-Per [Coder's own guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
-taken a step further: `coderd` is isolated from infrastructure too,
-not just from workspaces, so a misbehaving controller can't starve the Coder
-server. Don't confuse this `coderd` *node pool* with the `terraform/coderd`
-*Terraform stack* below — same name, unrelated things (one's a set of EC2
-nodes, the other manages license/provisioner keys via the Coder API).
+Per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
+taken a step further: `coderd` is isolated from infrastructure too, not just
+workspaces. Not to be confused with the `terraform/coderd` stack below, which
+manages license/provisioner keys via the Coder API — same name, unrelated thing.
 
 ## Premium License (optional)
 
-If you have a Coder Premium license, drop the file at `licence.lic` in the repo
-root before running `task init` (which applies it as part of platform config),
-or re-run `task coder-config` any time afterwards to pick up a change — it's
-idempotent, and the Terraform diff will show the license as unchanged if
-nothing about it moved. `licence.lic` is gitignored (`*.lic`) and
-must never be committed; if it's absent, the `coderd_license` resource is simply
-never created and Coder runs on the open-source feature set as normal.
+Optional: drop a Coder Premium license at `licence.lic` (gitignored) before
+`task init`, or run `task coder-config` afterwards to apply it. Without one,
+Coder runs on the open-source feature set.
 
 Check what's currently applied with:
 ```bash
@@ -116,15 +81,7 @@ TF_VAR_postgres_admin_password=<your-secure-password>
 ### 3. Deploy the Stack
 ```bash
 task login  # Validate AWS credentials
-task up     # infra + coder + init (including platform config) in one go
-```
-
-`task up` is shorthand for:
-```bash
-task infra  # EKS cluster + RDS PostgreSQL + VPC + cluster add-ons
-task coder  # Coder Helm release
-task init   # Create admin user, mint an API token, then apply platform config
-            # (license, provisioner keys) via the coderd Terraform provider
+task up     # Deploy everything: infra + coder + init (see Available Commands below)
 ```
 
 ### 4. Access Coder
