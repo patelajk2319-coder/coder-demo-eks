@@ -8,10 +8,14 @@ variable "oidc_provider_arn" {
   type        = string
 }
 
-variable "postgres_admin_password" {
-  description = "PostgreSQL admin password to store in Secrets Manager"
+variable "rds_resource_id" {
+  description = "RDS resource ID — scopes the rds-db:connect IAM permission to this instance"
   type        = string
-  sensitive   = true
+}
+
+variable "rds_admin_username" {
+  description = "PostgreSQL username Coder connects as via IAM auth"
+  type        = string
 }
 
 variable "github_oauth_client_secret" {

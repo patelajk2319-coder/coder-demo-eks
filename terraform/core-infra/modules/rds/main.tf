@@ -41,6 +41,10 @@ resource "aws_db_instance" "main" {
   username = var.admin_username
   password = var.admin_password
 
+  # Coder connects via IAM auth (CODER_PG_AUTH=awsiamrds), not this password —
+  # it's only used to create the instance and for the one-time `GRANT rds_iam`.
+  iam_database_authentication_enabled = true
+
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = false

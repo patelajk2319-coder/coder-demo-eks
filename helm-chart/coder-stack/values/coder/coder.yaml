@@ -1,7 +1,3 @@
-# Coder Helm values — structural and static config only.
-# All env vars (CODER_ACCESS_URL, CODER_PG_CONNECTION_URL, etc.) are
-# injected by Terraform via yamlencode to avoid fragile positional set overrides.
-
 coder:
   service:
     type: LoadBalancer
@@ -9,6 +5,9 @@ coder:
       service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+      # Stable hostname via external-dns — no more discovering the NLB
+      # hostname post-create and re-applying with the real value.
+      external-dns.alpha.kubernetes.io/hostname: "coder.coder-demo.internal"
 
   # Coder's "Medium" tier (1-100 devs): 4 vCPU / 8Gi total, 2-3 replicas —
   # https://coder.com/explore/how-coder-works/control-plane. Split across 2.
@@ -25,3 +24,93 @@ coder:
     limits:
       cpu: "2"
       memory: 4Gi
+
+  # Dedicated pool, isolated from platform add-ons too — see
+  # core-infra's eks_managed_node_groups.
+  nodeSelector:
+    coder.com/node-pool: coderd
+  tolerations:
+    - key: coder.com/node-pool
+      operator: Equal
+      value: coderd
+      effect: NoSchedule
+
+  # Pre-created by Terraform (terraform/coder) with the IRSA role-arn
+  # annotation — not chart-created, so nothing ever needs to re-patch it.
+  serviceAccount:
+    create: false
+    name: coder
+
+  volumes:
+    - name: secrets-store
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: coder-secrets
+  volumeMounts:
+    - name: secrets-store
+      mountPath: /mnt/secrets
+      readOnly: true
+
+  env:
+    - name: CODER_ACCESS_URL
+      value: "http://coder.coder-demo.internal"
+    # IAM auth, no stored password — see terraform/coder's coder-config
+    # ConfigMap and core-infra's rds-db:connect IAM policy.
+    - name: CODER_PG_AUTH
+      value: "awsiamrds"
+    - name: CODER_PG_CONNECTION_URL
+      valueFrom:
+        configMapKeyRef:
+          name: coder-config
+          key: pg-connection-url
+    - name: CODER_AUDIT_LOGGING
+      value: "true"
+    - name: CODER_EXPERIMENTS
+      value: "ai-tasks"
+    - name: CODER_TELEMETRY_ENABLE
+      value: "true"
+    - name: CODER_SESSION_DURATION
+      value: "720h"
+    - name: CODER_MAX_TOKEN_LIFETIME
+      value: "876h"
+    # Owner-created tokens (the coderd provider's terraform-coderd token) hit
+    # this cap instead of CODER_MAX_TOKEN_LIFETIME — defaults to 168h if unset.
+    - name: CODER_MAX_ADMIN_TOKEN_LIFETIME
+      value: "876h"
+    - name: CODER_DEFAULT_OAUTH_REFRESH_LIFETIME
+      value: "876h"
+    - name: CODER_AIBRIDGE_ENABLED
+      value: "true"
+    # Authenticated via this pod's IRSA role, not a static API key.
+    - name: CODER_AIBRIDGE_BEDROCK_REGION
+      value: "eu-west-1"
+    # Needs CODER_VERSION >= 2.36.5, else Bedrock rejects claude-sonnet-5's
+    # "adaptive" thinking schema.
+    - name: CODER_AIBRIDGE_BEDROCK_MODEL
+      value: "eu.anthropic.claude-sonnet-5"
+    - name: CODER_AIBRIDGE_BEDROCK_SMALL_FAST_MODEL
+      value: "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+    # Device flow, not browser-redirect — the redirect callback is built
+    # from CODER_ACCESS_URL, which a developer's browser can't reach.
+    - name: CODER_EXTERNAL_AUTH_0_ID
+      value: "github"
+    - name: CODER_EXTERNAL_AUTH_0_TYPE
+      value: "github"
+    - name: CODER_EXTERNAL_AUTH_0_CLIENT_ID
+      valueFrom:
+        configMapKeyRef:
+          name: coder-config
+          key: github-oauth-client-id
+    - name: CODER_EXTERNAL_AUTH_0_DEVICE_FLOW
+      value: "true"
+    # Single scope, not "repo workflow" — GitHub's device endpoint keeps
+    # only the last of multiple scopes, silently dropping "repo".
+    - name: CODER_EXTERNAL_AUTH_0_SCOPES
+      value: "repo"
+    - name: CODER_EXTERNAL_AUTH_0_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: coder-secrets
+          key: CODER_EXTERNAL_AUTH_0_CLIENT_SECRET

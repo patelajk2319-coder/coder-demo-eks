@@ -1,0 +1,26 @@
+# The chart's default Role is namespace-scoped; templates provision one
+# namespace per workspace, so this needs to be cluster-wide.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: coder-workspace-provisioner
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods", "persistentvolumeclaims"]
+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: coder-workspace-provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: coder-workspace-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: coder
+    namespace: coder

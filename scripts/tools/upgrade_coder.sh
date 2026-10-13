@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Upgrade Coder to the latest (or a specified) version via Terraform.
+# Upgrade Coder to the latest (or a specified) version by bumping the
+# targetRevision in gitops/coder/coder-app.yaml and letting Argo CD sync it —
+# the chart version lives in git now, not in .env or Terraform.
 # Usage: upgrade_coder.sh [TARGET_VERSION]
 #   TARGET_VERSION — optional, e.g. 2.34.6. Defaults to the latest GitHub release.
 
@@ -7,28 +9,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-TF_DIR="${ROOT_DIR}/terraform/coder"
+APP_FILE="${ROOT_DIR}/gitops/coder/coder-app.yaml"
 
 # shellcheck source=scripts/lib/colors.sh
 source "${SCRIPT_DIR}/../lib/colors.sh"
 # shellcheck source=scripts/lib/cluster_context.sh
 source "${SCRIPT_DIR}/../lib/cluster_context.sh"
 
-if [[ ! -f "${ROOT_DIR}/.env" ]]; then
-  error ".env not found"
-  exit 1
-fi
-set -a
-# shellcheck source=/dev/null
-source "${ROOT_DIR}/.env"
-set +a
-
-: "${CODER_VERSION:?CODER_VERSION must be set in .env}"
-: "${CODER_ACCESS_URL:?CODER_ACCESS_URL must be set in .env — run task coder first}"
-: "${TF_VAR_postgres_admin_password:?TF_VAR_postgres_admin_password must be set in .env}"
-: "${GITHUB_OAUTH_CLIENT_ID:?GITHUB_OAUTH_CLIENT_ID must be set in .env}"
-
-CURRENT_VERSION="${CODER_VERSION}"
+CURRENT_VERSION=$(grep -A2 'repoURL: https://helm.coder.com/v2' "${APP_FILE}" | grep targetRevision | awk '{print $2}')
 
 # ── Resolve target version ─────────────────────────────────────────────────────
 if [[ -n "${1:-}" ]]; then
@@ -48,22 +36,29 @@ fi
 
 info "Upgrading Coder: v${CURRENT_VERSION} → v${TARGET_VERSION}"
 
-# ── Terraform apply ────────────────────────────────────────────────────────────
-section "Applying Terraform (terraform/coder)..."
-terraform -chdir="${TF_DIR}" init -upgrade
-terraform -chdir="${TF_DIR}" apply \
-  -var="coder_access_url=${CODER_ACCESS_URL}" \
-  -var="coder_version=${TARGET_VERSION}" \
-  -var="github_oauth_client_id=${GITHUB_OAUTH_CLIENT_ID}" \
-  -auto-approve
+# ── Bump the Application's targetRevision, commit, push ───────────────────────
+section "Updating ${APP_FILE}..."
+sed -i '' "s|targetRevision: ${CURRENT_VERSION}|targetRevision: ${TARGET_VERSION}|" "${APP_FILE}"
 
-# ── Wait for rollout ───────────────────────────────────────────────────────────
-section "Waiting for rollout..."
-kubectl rollout status deployment/coder -n coder --timeout=5m
+git -C "${ROOT_DIR}" add "${APP_FILE}"
+git -C "${ROOT_DIR}" commit -m "Upgrade Coder to v${TARGET_VERSION}"
+git -C "${ROOT_DIR}" push
 
-# ── Update .env ────────────────────────────────────────────────────────────────
-sed -i '' "s|^CODER_VERSION=.*|CODER_VERSION=${TARGET_VERSION}|" "${ROOT_DIR}/.env"
-info ".env updated: CODER_VERSION=${TARGET_VERSION}"
+# ── Wait for Argo CD to sync ────────────────────────────────────────────────────
+section "Waiting for Argo CD to sync the new version..."
+kubectl -n argocd annotate application coder argocd.argoproj.io/refresh=hard --overwrite >/dev/null
+
+for _ in $(seq 1 30); do
+  HEALTH=$(kubectl get application coder -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+  SYNC=$(kubectl get application coder -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+  [[ "${HEALTH}" == "Healthy" && "${SYNC}" == "Synced" ]] && break
+  sleep 10
+done
+
+if [[ "${HEALTH}" != "Healthy" || "${SYNC}" != "Synced" ]]; then
+  error "Argo CD did not reach Synced/Healthy — check: kubectl get application coder -n argocd"
+  exit 1
+fi
 
 echo ""
 info "Coder upgraded to v${TARGET_VERSION}"

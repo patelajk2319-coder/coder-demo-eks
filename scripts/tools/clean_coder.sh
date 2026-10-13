@@ -41,14 +41,13 @@ source "${SCRIPT_DIR}/../lib/cluster_context.sh"
 
 stop_coder_port_forward
 
-# ── Remove Helm release ────────────────────────────────────────────────────────
-section "Removing Coder Helm release..."
-if helm status coder -n coder &>/dev/null; then
-  helm uninstall coder -n coder
-  info "Helm release removed"
-else
-  info "No Helm release found — skipping"
-fi
+# ── Suspend Argo CD, then delete ────────────────────────────────────────────────
+# Coder's Helm release is Argo CD-managed (selfHeal: true) — a bare `helm
+# uninstall` would just get reconciled back within seconds. Delete the
+# Application itself instead, which takes the release down with it.
+section "Deleting Argo CD-managed Coder resources..."
+kubectl delete application coder coder-rbac -n argocd --cascade=foreground --wait=true --timeout=5m --ignore-not-found=true
+info "Coder and its RBAC removed"
 
 # ── Delete namespace ───────────────────────────────────────────────────────────
 section "Deleting coder namespace..."
@@ -57,9 +56,9 @@ info "Namespace removed"
 
 # ── Clear Terraform coder state ────────────────────────────────────────────────
 section "Clearing terraform/coder state..."
-terraform -chdir="${TF_DIR}" state rm kubernetes_annotations.coder_sa 2>/dev/null || true
+terraform -chdir="${TF_DIR}" state rm kubernetes_service_account.coder 2>/dev/null || true
+terraform -chdir="${TF_DIR}" state rm kubernetes_config_map.coder_config 2>/dev/null || true
 terraform -chdir="${TF_DIR}" state rm kubernetes_manifest.secret_provider_class 2>/dev/null || true
-terraform -chdir="${TF_DIR}" state rm helm_release.coder 2>/dev/null || true
 terraform -chdir="${TF_DIR}" state rm kubernetes_namespace.coder 2>/dev/null || true
 info "Terraform state cleared"
 

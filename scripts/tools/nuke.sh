@@ -49,7 +49,6 @@ stop_coder_port_forward
 if [[ -f "${CODER_TF_DIR}/terraform.tfstate" ]]; then
   section "Destroying Coder (lets the AWS Load Balancer Controller clean up the NLB first)..."
   terraform -chdir="${CODER_TF_DIR}" destroy -auto-approve \
-    -var="coder_access_url=${CODER_ACCESS_URL:-http://placeholder}" \
     -var="github_oauth_client_id=${GITHUB_OAUTH_CLIENT_ID:-placeholder}" \
     || warn "Destroying terraform/coder failed — the NLB and its security groups may not have been cleaned up; addons destroy below may fail on DependencyViolation as a result"
 fi

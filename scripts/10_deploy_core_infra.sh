@@ -60,6 +60,24 @@ if ! kubectl wait --for=condition=Ready node --all --timeout=120s; then
 fi
 kubectl get nodes
 
+# Coder connects via IAM auth (CODER_PG_AUTH=awsiamrds), which requires the
+# rds_iam role — Terraform can't run SQL, so this one-time grant goes here.
+# Idempotent: re-granting an already-granted role is a no-op.
+section "Granting rds_iam to the Postgres admin user..."
+kubectl run pg-grant-rds-iam \
+  --image=postgres:16 \
+  --restart=Never \
+  --namespace=default \
+  --env="PGPASSWORD=${TF_VAR_postgres_admin_password}" \
+  --overrides='{"spec":{"tolerations":[{"key":"coder.com/node-pool","operator":"Exists","effect":"NoSchedule"}]}}' \
+  --command -- sleep 60 &>/dev/null
+kubectl wait pod/pg-grant-rds-iam --for=condition=Ready --timeout=60s --namespace=default &>/dev/null
+kubectl exec pg-grant-rds-iam --namespace=default -- \
+  psql -h "${RDS_ENDPOINT}" -U "${RDS_ADMIN_USERNAME}" -d postgres \
+  -c "GRANT rds_iam TO ${RDS_ADMIN_USERNAME};"
+kubectl delete pod pg-grant-rds-iam --namespace=default &>/dev/null
+info "rds_iam granted"
+
 section "Initialising Terraform (terraform/addons)..."
 terraform -chdir="${ADDONS_TF_DIR}" init -upgrade
 

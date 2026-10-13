@@ -154,7 +154,9 @@ module "secrets" {
   name_prefix       = local.name_prefix
   oidc_provider_arn = module.eks.oidc_provider_arn
 
-  postgres_admin_password    = var.postgres_admin_password
+  rds_resource_id    = module.rds.resource_id
+  rds_admin_username = local.postgres_admin_username
+
   github_oauth_client_secret = var.github_oauth_client_secret
 
   tags = local.common_tags

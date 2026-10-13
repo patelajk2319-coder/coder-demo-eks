@@ -12,3 +12,8 @@ output "admin_username" {
   description = "PostgreSQL administrator username"
   value       = aws_db_instance.main.username
 }
+
+output "resource_id" {
+  description = "RDS resource ID — needed to build the IAM auth rds-db:connect ARN"
+  value       = aws_db_instance.main.resource_id
+}

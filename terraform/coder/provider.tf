@@ -6,10 +6,6 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.30"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.14"
-    }
   }
 }
 
@@ -18,13 +14,6 @@ terraform {
 provider "kubernetes" {
   config_path    = "~/.kube/config"
   config_context = "${data.terraform_remote_state.core.outputs.cluster_name}-admin"
-}
-
-provider "helm" {
-  kubernetes {
-    config_path    = "~/.kube/config"
-    config_context = "${data.terraform_remote_state.core.outputs.cluster_name}-admin"
-  }
 }
 
 # Nothing here is read from terraform/addons — ordering dependency only.

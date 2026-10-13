@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: coder
+  namespace: argocd
+spec:
+  project: platform
+  sources:
+    - repoURL: https://helm.coder.com/v2
+      chart: coder
+      targetRevision: 2.36.5
+      helm:
+        valueFiles:
+          - $values/helm-chart/coder-stack/values/coder/coder.yaml
+    - repoURL: https://github.com/patelajk2319-coder/coder-demo-eks.git
+      targetRevision: gitops-migration
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: coder
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
