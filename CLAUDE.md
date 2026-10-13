@@ -51,6 +51,8 @@ US English throughout all documentation, comments, and output strings.
 - Tasks that call scripts pass through `.env` via the `dotenv` directive at file root
 - Deployment order: `login` → `infra` → `coder` → `init`
 - Cleanup order: `clean` (keep EKS running) or `nuke` (destroy everything)
+- Before `task nuke`: nuke any peered team cluster first — its peering
+  connection blocks this VPC's own teardown otherwise
 
 ## GitOps
 Argo CD (bootstrapped once by Terraform, `terraform/addons/modules/addons/argocd.tf`)
