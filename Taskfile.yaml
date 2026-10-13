@@ -133,6 +133,16 @@ tasks:
     cmds:
       - bash scripts/tools/port_forward.sh stop
 
+  argocd:
+    desc: Port-forward Argo CD to localhost:8443 (left running)
+    cmds:
+      - bash scripts/tools/argocd_port_forward.sh
+
+  argocd-stop:
+    desc: Stop the persistent Argo CD port-forward
+    cmds:
+      - bash scripts/tools/argocd_port_forward.sh stop
+
   nodes:
     desc: List EKS nodes
     cmds:

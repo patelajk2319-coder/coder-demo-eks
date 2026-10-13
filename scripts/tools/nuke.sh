@@ -58,8 +58,13 @@ fi
 # cluster still exists — the kubernetes/helm providers here are configured
 # against it.
 if [[ -f "${ADDONS_TF_DIR}/terraform.tfstate" ]]; then
+  section "Deleting Argo CD-managed Applications first, while the cluster is still alive..."
+  kubectl delete application -n argocd --all --cascade=foreground --wait=true --timeout=5m \
+    || warn "Deleting Argo CD Applications failed — some addon/Coder resources may need manual cleanup"
+
   section "Destroying cluster add-ons..."
   terraform -chdir="${ADDONS_TF_DIR}" destroy -auto-approve \
+    -var="argocd_github_token=${ARGOCD_GITHUB_TOKEN:-placeholder}" \
     || warn "Destroying terraform/addons failed — some resources may require manual cleanup in the AWS console"
 fi
 

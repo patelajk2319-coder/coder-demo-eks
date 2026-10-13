@@ -30,6 +30,7 @@ set +a
 
 : "${TF_VAR_postgres_admin_password:?TF_VAR_postgres_admin_password must be set in .env}"
 : "${GITHUB_OAUTH_CLIENT_SECRET:?GITHUB_OAUTH_CLIENT_SECRET must be set in .env}"
+: "${ARGOCD_GITHUB_TOKEN:?ARGOCD_GITHUB_TOKEN must be set in .env}"
 
 section "Initialising Terraform (terraform/core-infra)..."
 terraform -chdir="${CORE_TF_DIR}" init -upgrade
@@ -62,8 +63,10 @@ kubectl get nodes
 section "Initialising Terraform (terraform/addons)..."
 terraform -chdir="${ADDONS_TF_DIR}" init -upgrade
 
-section "Deploying cluster add-ons (AWS Load Balancer Controller, Secrets Store CSI driver)..."
-terraform -chdir="${ADDONS_TF_DIR}" apply -auto-approve
+section "Deploying cluster add-ons (AWS Load Balancer Controller, Secrets Store CSI driver, Argo CD)..."
+terraform -chdir="${ADDONS_TF_DIR}" apply \
+  -var="argocd_github_token=${ARGOCD_GITHUB_TOKEN}" \
+  -auto-approve
 
 section "Updating .env with infrastructure outputs..."
 

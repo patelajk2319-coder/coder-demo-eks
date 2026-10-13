@@ -1,0 +1,22 @@
+global:
+  nodeSelector:
+    coder.com/node-pool: system
+  tolerations:
+    - key: coder.com/node-pool
+      operator: Equal
+      value: system
+      effect: NoSchedule
+
+configs:
+  params:
+    server.insecure: true
+
+server:
+  service:
+    type: ClusterIP
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false

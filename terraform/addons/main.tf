@@ -7,9 +7,10 @@ locals {
 module "addons" {
   source = "./modules/addons"
 
-  cluster_name      = data.terraform_remote_state.core.outputs.cluster_name
-  oidc_provider_arn = data.terraform_remote_state.core.outputs.oidc_provider_arn
-  vpc_id            = data.terraform_remote_state.core.outputs.vpc_id
-  region            = local.aws_region
-  tags              = var.tags
+  cluster_name        = data.terraform_remote_state.core.outputs.cluster_name
+  oidc_provider_arn   = data.terraform_remote_state.core.outputs.oidc_provider_arn
+  vpc_id              = data.terraform_remote_state.core.outputs.vpc_id
+  region              = local.aws_region
+  tags                = var.tags
+  argocd_github_token = var.argocd_github_token
 }

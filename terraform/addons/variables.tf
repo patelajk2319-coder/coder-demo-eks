@@ -7,3 +7,9 @@ variable "tags" {
     environment = "demo"
   }
 }
+
+variable "argocd_github_token" {
+  description = "GitHub token Argo CD uses to read this repo's own gitops/ directory"
+  type        = string
+  sensitive   = true
+}
