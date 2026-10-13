@@ -21,10 +21,15 @@ brew install terraform awscli kubectl jq go-task coder shellcheck
 Copy `.env.example` to `.env`.
 
 **You fill in:**
-- `AWS_PROFILE` — your AWS CLI profile
-- `CODER_ADMIN_EMAIL` / `CODER_ADMIN_PASSWORD` — Coder admin login (email defaults to `admin@coder.demo`)
-- `TF_VAR_postgres_admin_password` — RDS admin password
-- `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` — from a GitHub OAuth App (see below)
+
+| Variable Name | Description |
+|----------------|-------------|
+| `AWS_PROFILE` | Your AWS CLI profile |
+| `CODER_ADMIN_EMAIL` | Coder admin login email (defaults to `admin@coder.demo`) |
+| `CODER_ADMIN_PASSWORD` | Coder admin login password |
+| `TF_VAR_postgres_admin_password` | RDS admin password |
+| `GITHUB_OAUTH_CLIENT_ID` | GitHub OAuth App client ID (see below) |
+| `GITHUB_OAUTH_CLIENT_SECRET` | GitHub OAuth App client secret (see below) |
 
 **Written by the deploy scripts — leave blank:** `CODER_ACCESS_URL`, `CODER_API_TOKEN`,
 `EKS_CLUSTER_NAME`, `RDS_ENDPOINT`, `RDS_DATABASE`, `RDS_ADMIN_USERNAME`.
