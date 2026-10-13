@@ -28,8 +28,16 @@ spec:
       kind: ClusterRoleBinding
     - group: storage.k8s.io
       kind: StorageClass
+    - group: storage.k8s.io
+      kind: CSIDriver
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: networking.k8s.io
+      kind: IngressClass
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
