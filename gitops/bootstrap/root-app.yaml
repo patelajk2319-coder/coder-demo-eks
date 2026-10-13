@@ -17,7 +17,7 @@ spec:
       # bootstrap/* is Terraform-applied directly; */manifests/* is raw
       # manifest content referenced BY an Application (gp3-storageclass), not
       # something root itself should adopt.
-      exclude: "bootstrap/*,*/manifests/*"
+      exclude: "bootstrap/*,addons/manifests/*"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
