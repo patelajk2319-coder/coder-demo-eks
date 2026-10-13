@@ -44,13 +44,11 @@ toleration:
 | `workspaces` | Not created yet — deferred | — |
 
 Per [Coder's validated-architectures guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
-taken a step further: `coderd` is isolated from infrastructure too, not just
-workspaces. Not to be confused with the `terraform/coderd` stack below, which
-manages license/provisioner keys via the Coder API — same name, unrelated thing.
+
 
 ## Premium License (optional)
 
-Optional: drop a Coder Premium license at `licence.lic` (gitignored) before
+Optional: drop a Coder Premium license at `licence.lic` before
 `task init`, or run `task coder-config` afterwards to apply it. Without one,
 Coder runs on the open-source feature set.
 
