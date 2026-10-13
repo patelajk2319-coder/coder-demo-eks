@@ -1,6 +1,11 @@
 clusterName: coder-demo-eks
 region: eu-west-1
 
+# IMDS-based auto-discovery failed live (hop-limit blocks pod access) — find
+# the VPC by its already-fixed Name tag instead.
+vpcTags:
+  Name: coder-demo-vpc
+
 serviceAccount:
   create: false
   name: aws-load-balancer-controller
