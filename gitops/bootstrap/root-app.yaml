@@ -14,7 +14,10 @@ spec:
     path: gitops
     directory:
       recurse: true
-      exclude: "bootstrap/*"
+      # bootstrap/* is Terraform-applied directly; addons/manifests/* is raw
+      # manifest content referenced BY an Application (gp3-storageclass), not
+      # something root itself should adopt — same for any future */manifests/*.
+      exclude: "{bootstrap/*,*/manifests/*}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
