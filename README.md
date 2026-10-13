@@ -31,8 +31,16 @@ Copy `.env.example` to `.env`.
 | `GITHUB_OAUTH_CLIENT_ID` | GitHub OAuth App client ID (see below) |
 | `GITHUB_OAUTH_CLIENT_SECRET` | GitHub OAuth App client secret (see below) |
 
-**Written by the deploy scripts — leave blank:** `CODER_ACCESS_URL`, `CODER_API_TOKEN`,
-`EKS_CLUSTER_NAME`, `RDS_ENDPOINT`, `RDS_DATABASE`, `RDS_ADMIN_USERNAME`.
+**Written by the deploy scripts — leave blank:**
+
+| Variable Name | Description |
+|----------------|-------------|
+| `CODER_ACCESS_URL` | Internal NLB hostname Coder is reachable at — written by `task coder` |
+| `CODER_API_TOKEN` | API token for the `coderd` Terraform provider — written by `task init`, re-minted if the old one stops authenticating |
+| `EKS_CLUSTER_NAME` | The EKS cluster's name — written by `task infra` |
+| `RDS_ENDPOINT` | The RDS instance's connection endpoint — written by `task infra` |
+| `RDS_DATABASE` | The Coder database name — written by `task infra` |
+| `RDS_ADMIN_USERNAME` | The RDS admin username — written by `task infra` |
 
 Region is fixed to `eu-west-1` in Terraform, not a variable — your
 `AWS_PROFILE` must resolve to that region.
