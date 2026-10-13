@@ -57,7 +57,7 @@ resource "kubernetes_manifest" "argocd_project_platform" {
 # The one Application Terraform applies directly (app-of-apps) — everything
 # else under gitops/ is declared inside it and reconciled from git from here on.
 resource "kubernetes_manifest" "argocd_root_app" {
-  manifest = yamldecode(file("${local.repo_root}/gitops/bootstrap/root-app.yaml"))
+  manifest = yamldecode(file("${local.repo_root}/bootstrap/root-app.yaml"))
 
   depends_on = [kubernetes_manifest.argocd_project_platform]
 }

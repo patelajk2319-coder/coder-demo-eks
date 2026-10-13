@@ -199,24 +199,5 @@ resource "aws_eks_addon" "ebs_csi" {
   })
 }
 
-# gp3 over the cluster's pre-existing gp2 default — cheaper and higher baseline
-# IOPS/throughput at the same size, and the modern EBS CSI recommendation.
-resource "kubernetes_storage_class" "gp3" {
-  metadata {
-    name = "gp3"
-    annotations = {
-      "storageclass.kubernetes.io/is-default-class" = "true"
-    }
-  }
-
-  storage_provisioner    = "ebs.csi.aws.com"
-  reclaim_policy         = "Delete"
-  volume_binding_mode    = "WaitForFirstConsumer"
-  allow_volume_expansion = true
-
-  parameters = {
-    type = "gp3"
-  }
-
-  depends_on = [aws_eks_addon.ebs_csi]
-}
+# gp3 StorageClass moved to gitops/addons/ (Argo CD-managed) — see
+# gitops/addons/gp3-storageclass-app.yaml.

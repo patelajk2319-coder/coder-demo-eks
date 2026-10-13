@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/patelajk2319-coder/coder-demo-eks.git
     targetRevision: gitops-migration
-    path: gitops/addons/manifests
+    path: manifests/addons
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
