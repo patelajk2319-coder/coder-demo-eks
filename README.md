@@ -69,11 +69,11 @@ toleration:
 | Pool | Runs | Instance type |
 |------|------|----------------|
 | `coderd` | Coder server only (2 replicas, 1 vCPU/2Gi request, 2 vCPU/4Gi limit each — requests below limits so a rollout's surge pod has room) | `m6i.xlarge` |
-| `platform` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
+| `system` | ALB controller, EBS CSI controller, CoreDNS, Secrets Store CSI driver | `m6i.large` |
 | `workspaces` | Not created yet — deferred | — |
 
 Per [Coder's own guidance](https://coder.com/docs/admin/infrastructure/validated-architectures),
-taken a step further: `coderd` is isolated from platform infrastructure too,
+taken a step further: `coderd` is isolated from infrastructure too,
 not just from workspaces, so a misbehaving controller can't starve the Coder
 server. Don't confuse this `coderd` *node pool* with the `terraform/coderd`
 *Terraform stack* below — same name, unrelated things (one's a set of EC2

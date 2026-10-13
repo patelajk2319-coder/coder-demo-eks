@@ -11,7 +11,7 @@ Node-pool scheduling follows the same split: this repo owns the `coder.com/node-
 node labels and taints, each pool labeled *and* tainted so nothing lands on it
 without an explicit nodeSelector + toleration. Three pools — `coderd` (the Coder
 server only, isolated from everything else per https://coder.com/docs/admin/infrastructure/validated-architectures
-taken a step further), `platform` (ALB controller, EBS CSI controller, Secrets
+taken a step further), `system` (ALB controller, EBS CSI controller, Secrets
 Store CSI driver, CoreDNS), and `workspaces` (deferred — not yet created). Per-node
 DaemonSets that must run everywhere regardless of pool (vpc-cni, kube-proxy, the EBS
 CSI node plugin) are untouched — they tolerate all taints by default. Once the

@@ -52,8 +52,8 @@ variable "node_max_count" {
   default     = 3
 }
 
-variable "platform_node_instance_type" {
-  description = "EC2 instance type for the platform node pool (ALB controller, CSI drivers, CoreDNS) — smaller than coderd's, since these are lightweight controllers"
+variable "system_node_instance_type" {
+  description = "EC2 instance type for the system node pool (ALB controller, CSI drivers, CoreDNS) — smaller than coderd's, since these are lightweight controllers"
   type        = string
   default     = "m6i.large"
 }

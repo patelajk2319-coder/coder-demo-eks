@@ -89,11 +89,11 @@ module "eks" {
     }
     coredns = {
       configuration_values = jsonencode({
-        nodeSelector = { "coder.com/node-pool" = "platform" }
+        nodeSelector = { "coder.com/node-pool" = "system" }
         tolerations = [
           { key = "CriticalAddonsOnly", operator = "Exists" },
           { key = "node-role.kubernetes.io/control-plane", effect = "NoSchedule" },
-          { key = "coder.com/node-pool", operator = "Equal", value = "platform", effect = "NoSchedule" },
+          { key = "coder.com/node-pool", operator = "Equal", value = "system", effect = "NoSchedule" },
         ]
       })
     }
@@ -123,20 +123,20 @@ module "eks" {
       }
     }
 
-    platform = {
-      instance_types = [var.platform_node_instance_type]
+    system = {
+      instance_types = [var.system_node_instance_type]
 
       min_size     = 1
       max_size     = 3
       desired_size = 2
 
       labels = {
-        "coder.com/node-pool" = "platform"
+        "coder.com/node-pool" = "system"
       }
       taints = {
         dedicated = {
           key    = "coder.com/node-pool"
-          value  = "platform"
+          value  = "system"
           effect = "NO_SCHEDULE"
         }
       }

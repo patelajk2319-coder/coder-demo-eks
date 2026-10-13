@@ -66,16 +66,16 @@ resource "helm_release" "alb_controller" {
     value = kubernetes_service_account.alb_controller.metadata[0].name
   }
 
-  # Pin to the platform node pool, isolated from coderd — see
+  # Pin to the system node pool, isolated from coderd — see
   # core-infra's eks_managed_node_groups.
   values = [
     yamlencode({
-      nodeSelector = { "coder.com/node-pool" = "platform" }
+      nodeSelector = { "coder.com/node-pool" = "system" }
       tolerations = [
         {
           key      = "coder.com/node-pool"
           operator = "Equal"
-          value    = "platform"
+          value    = "system"
           effect   = "NoSchedule"
         }
       ]
@@ -189,11 +189,11 @@ resource "aws_eks_addon" "ebs_csi" {
   # must keep running everywhere, workspaces pool included.
   configuration_values = jsonencode({
     controller = {
-      nodeSelector = { "coder.com/node-pool" = "platform" }
+      nodeSelector = { "coder.com/node-pool" = "system" }
       tolerations = [
         { key = "CriticalAddonsOnly", operator = "Exists" },
         { operator = "Exists", effect = "NoExecute", tolerationSeconds = 300 },
-        { key = "coder.com/node-pool", operator = "Equal", value = "platform", effect = "NoSchedule" },
+        { key = "coder.com/node-pool", operator = "Equal", value = "system", effect = "NoSchedule" },
       ]
     }
   })
