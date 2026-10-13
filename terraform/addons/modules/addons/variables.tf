@@ -29,3 +29,8 @@ variable "argocd_github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "internal_zone_id" {
+  description = "Private Route53 zone ID external-dns is scoped to"
+  type        = string
+}

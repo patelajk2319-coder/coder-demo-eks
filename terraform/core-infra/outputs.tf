@@ -37,3 +37,13 @@ output "coder_identity_role_arn" {
   description = "IAM role ARN (IRSA) for the Coder service account — read access to Secrets Manager"
   value       = module.secrets.coder_role_arn
 }
+
+output "internal_zone_id" {
+  description = "Private Route53 zone ID — needed by terraform/addons for external-dns's IAM scoping"
+  value       = aws_route53_zone.internal.zone_id
+}
+
+output "internal_zone_name" {
+  description = "Private Route53 zone domain (e.g. coder-demo.internal) — Coder's stable access URL lives under this"
+  value       = aws_route53_zone.internal.name
+}
