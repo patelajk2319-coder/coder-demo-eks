@@ -6,8 +6,10 @@ coder:
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
       # Stable hostname via external-dns — no more discovering the NLB
-      # hostname post-create and re-applying with the real value.
-      external-dns.alpha.kubernetes.io/hostname: "coder.coder-demo.internal"
+      # hostname post-create and re-applying with the real value. This
+      # chart version defaults EnableLegacyAnnotationPrefix=false, so the
+      # old "external-dns.alpha.kubernetes.io/" prefix is silently ignored.
+      external-dns.kubernetes.io/hostname: "coder.coder-demo.internal"
 
   # Coder's "Medium" tier (1-100 devs): 4 vCPU / 8Gi total, 2-3 replicas —
   # https://coder.com/explore/how-coder-works/control-plane. Split across 2.

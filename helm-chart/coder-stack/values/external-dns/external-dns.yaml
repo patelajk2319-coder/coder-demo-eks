@@ -18,8 +18,6 @@ domainFilters:
 extraArgs:
   aws-zone-type: private
 
-logLevel: debug
-
 env:
   - name: AWS_DEFAULT_REGION
     value: eu-west-1
