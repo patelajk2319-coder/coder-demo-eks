@@ -17,6 +17,7 @@ domainFilters:
 
 extraArgs:
   aws-zone-type: private
+  log-level: debug
 
 env:
   - name: AWS_DEFAULT_REGION
