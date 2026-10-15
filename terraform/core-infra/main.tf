@@ -99,8 +99,7 @@ module "eks" {
     }
   }
 
-  # Dedicated node pools, labeled + tainted — see README's Node Pools section.
-  # workspaces is a deferred third pool, not created yet.
+  # Dedicated node pools, labeled + tainted
   eks_managed_node_groups = {
     coderd = {
       instance_types = [var.node_instance_type]
