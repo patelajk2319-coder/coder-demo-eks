@@ -47,7 +47,9 @@ resource "kubernetes_config_map" "coder_config" {
 
   data = {
     # No password — Coder connects via IAM auth (CODER_PG_AUTH=awsiamrds).
-    pg-connection-url = "postgresql://${data.terraform_remote_state.core.outputs.rds_admin_username}@${data.terraform_remote_state.core.outputs.rds_endpoint}/${data.terraform_remote_state.core.outputs.rds_database_name}?sslmode=require"
+    # Port is required here — the awsiamrds driver needs host:port to build
+    # the RDS auth token, unlike a normal password-based connection string.
+    pg-connection-url = "postgresql://${data.terraform_remote_state.core.outputs.rds_admin_username}@${data.terraform_remote_state.core.outputs.rds_endpoint}:5432/${data.terraform_remote_state.core.outputs.rds_database_name}?sslmode=require"
 
     github-oauth-client-id = var.github_oauth_client_id
   }
