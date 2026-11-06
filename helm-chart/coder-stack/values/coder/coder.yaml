@@ -37,6 +37,23 @@ coder:
       value: coderd
       effect: NoSchedule
 
+  # Spreads replicas across different nodes in the coderd pool so one node
+  # loss can't take out every replica at once. This is actually the chart's
+  # own default (v2.36.5) — pinned explicitly here so it's visible in git
+  # and survives a future chart bump changing it.
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                    - "coder"
+            topologyKey: kubernetes.io/hostname
+          weight: 1 # 1-100, relative priority vs. other preferred rules
+
   # Pre-created by Terraform (terraform/coder) with the IRSA role-arn
   # annotation — not chart-created, so nothing ever needs to re-patch it.
   serviceAccount:
