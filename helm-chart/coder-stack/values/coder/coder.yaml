@@ -13,7 +13,7 @@ coder:
 
   # Coder's "Medium" tier (1-100 devs): 4 vCPU / 8Gi total, 2-3 replicas —
   # https://coder.com/explore/how-coder-works/control-plane. Split across 2.
-  replicaCount: 2
+  replicaCount: 3
 
   # Requests below limits (not Guaranteed QoS) so a rollout's extra surge
   # pod fits on the coderd pool — v2.36.5's chart has no strategy/maxSurge
