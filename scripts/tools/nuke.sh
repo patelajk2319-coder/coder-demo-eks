@@ -67,6 +67,33 @@ if [[ -f "${ADDONS_TF_DIR}/terraform.tfstate" ]]; then
     || warn "Destroying terraform/addons failed — some resources may require manual cleanup in the AWS console"
 fi
 
+# external-dns's own records (A/AAAA for coder.coder-demo.internal, plus
+# its TXT ownership markers) should already be gone by now — it watches
+# the Coder Service and retracts them on deletion. But that retraction
+# races against external-dns's own pod being torn down a few lines up
+# (kubectl delete application --all deletes its Application too), and
+# losing that race leaves orphaned records that block the zone destroy
+# below with HostedZoneNotEmpty. Purge defensively instead of depending
+# on that race going the right way.
+if [[ -f "${CORE_TF_DIR}/terraform.tfstate" ]]; then
+  ZONE_ID="$(terraform -chdir="${CORE_TF_DIR}" output -raw internal_zone_id 2>/dev/null || true)"
+  if [[ -n "${ZONE_ID}" ]]; then
+    section "Purging any non-default records left in the internal DNS zone..."
+    STALE_RECORDS="$(aws route53 list-resource-record-sets \
+      --hosted-zone-id "${ZONE_ID}" \
+      --query "ResourceRecordSets[?Type != 'SOA' && Type != 'NS']" \
+      --output json)"
+    if [[ "${STALE_RECORDS}" != "[]" ]]; then
+      CHANGE_BATCH="$(jq -n --argjson records "${STALE_RECORDS}" \
+        '{Changes: [$records[] | {Action: "DELETE", ResourceRecordSet: .}]}')"
+      aws route53 change-resource-record-sets \
+        --hosted-zone-id "${ZONE_ID}" \
+        --change-batch "${CHANGE_BATCH}" >/dev/null
+      info "Purged $(echo "${STALE_RECORDS}" | jq 'length') stale record(s)"
+    fi
+  fi
+fi
+
 section "Destroying VPC, EKS, RDS, and Secrets Manager..."
 terraform -chdir="${CORE_TF_DIR}" destroy -auto-approve \
   -var="github_oauth_client_secret=${GITHUB_OAUTH_CLIENT_SECRET}" \
